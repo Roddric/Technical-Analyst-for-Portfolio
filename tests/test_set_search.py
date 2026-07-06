@@ -44,27 +44,44 @@ def test_cutoff_truncates_history():
 
 
 def test_run_stage1_pools_fdr_across_assets(monkeypatch):
+    """Deterministic fixture that DISCRIMINATES pooled BH from per-asset BH.
+
+    Hand-crafted p-values: AAA has nine rows at p=1e-6; BBB has two rows at
+    p=0.08 and p=0.9. Pooled BH over all 11 (q=0.10): the 0.08 row is rank
+    10 with threshold 10/11*0.10 ~= 0.0909, so it SURVIVES. Per-asset BH on
+    BBB alone (n=2): rank-1 threshold is 0.05, so 0.08 FAILS. A per-asset
+    regression therefore flips the p=0.08 row and this test catches it."""
     import pandasta_set_search as pss
-    df_a = synth_ohlcv(n=900, seed=11)
-    df_b = synth_ohlcv(n=900, seed=22)
     fake_universe = {"AAA": {"class": "equity"},
                      "BBB": {"class": "rates", "return_mode": "diff"}}
     monkeypatch.setattr(pss, "UNIVERSE", fake_universe)
     monkeypatch.setattr(pss, "return_mode",
                         lambda t: fake_universe[t].get("return_mode", "log"))
-    frames = {"AAA": df_a, "BBB": df_b}
     monkeypatch.setattr(pss, "indicator_series_cache",
-                        lambda tkr, cutoff: (frames[tkr],
-                                             pss._candidate_values(tkr, frames[tkr])))
+                        lambda tkr, cutoff: (synth_ohlcv(n=200), {}))
+    fake_p = {"AAA": [1e-6] * 9, "BBB": [0.08, 0.9]}
+
+    def fake_screen(tkr, klass, df, mode, values=None):
+        return [{"asset": tkr, "asset_class": klass,
+                 "indicator": f"IND-{tkr}-{i}", "slot": "momentum",
+                 "horizon": 5, "ic": 0.05, "ic_ir": 0.1, "n_obs": 500,
+                 "p_value": p, "note": ""}
+                for i, p in enumerate(fake_p[tkr])]
+
+    monkeypatch.setattr(pss, "_screen_one_asset", fake_screen)
     out = pss.run_stage1(cutoff=None)
     assert set(out["asset"]) == {"AAA", "BBB"}
     assert "survives_fdr" in out.columns
     assert out["survives_fdr"].dtype == bool
-    # pooled: the column exists across BOTH assets in one frame (single BH pass)
-    assert out.groupby("asset")["survives_fdr"].count().min() > 0
-    # pooled BH, verified against an independent recomputation over the
-    # combined p-value set (fails if FDR were computed per-asset, since BH's
-    # threshold depends on the pooled p-value distribution)
+    # all nine AAA rows (p=1e-6) survive under pooled BH
+    assert out.loc[out["asset"] == "AAA", "survives_fdr"].all()
+    # the discriminator: p=0.08 survives ONLY under pooled BH (rank-10
+    # threshold ~0.0909 pooled vs 0.05 per-asset on BBB's two rows)
+    assert bool(out.loc[np.isclose(out["p_value"], 0.08),
+                        "survives_fdr"].iloc[0]) is True
+    assert bool(out.loc[np.isclose(out["p_value"], 0.9),
+                        "survives_fdr"].iloc[0]) is False
+    # element-wise agreement with an independent pooled BH recomputation
     pool = out["p_value"].notna().to_numpy()
     expected = np.zeros(len(out), dtype=bool)
     expected[pool] = st.benjamini_hochberg(
