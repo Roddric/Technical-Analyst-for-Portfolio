@@ -62,6 +62,14 @@ def test_run_stage1_pools_fdr_across_assets(monkeypatch):
     assert out["survives_fdr"].dtype == bool
     # pooled: the column exists across BOTH assets in one frame (single BH pass)
     assert out.groupby("asset")["survives_fdr"].count().min() > 0
+    # pooled BH, verified against an independent recomputation over the
+    # combined p-value set (fails if FDR were computed per-asset, since BH's
+    # threshold depends on the pooled p-value distribution)
+    pool = out["p_value"].notna().to_numpy()
+    expected = np.zeros(len(out), dtype=bool)
+    expected[pool] = st.benjamini_hochberg(
+        out.loc[out["p_value"].notna(), "p_value"].to_numpy(), pss.FDR_Q)
+    assert (out["survives_fdr"].to_numpy() == expected).all()
 
 
 def test_run_stage1_skips_missing_asset(monkeypatch, capsys):
