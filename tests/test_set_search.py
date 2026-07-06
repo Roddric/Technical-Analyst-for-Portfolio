@@ -41,3 +41,40 @@ def test_cutoff_truncates_history():
     n_full = max(r["n_obs"] for r in rows_full)
     n_cut = max(r["n_obs"] for r in rows_cut)
     assert n_cut < n_full
+
+
+def test_run_stage1_pools_fdr_across_assets(monkeypatch):
+    import pandasta_set_search as pss
+    df_a = synth_ohlcv(n=900, seed=11)
+    df_b = synth_ohlcv(n=900, seed=22)
+    fake_universe = {"AAA": {"class": "equity"},
+                     "BBB": {"class": "rates", "return_mode": "diff"}}
+    monkeypatch.setattr(pss, "UNIVERSE", fake_universe)
+    monkeypatch.setattr(pss, "return_mode",
+                        lambda t: fake_universe[t].get("return_mode", "log"))
+    frames = {"AAA": df_a, "BBB": df_b}
+    monkeypatch.setattr(pss, "indicator_series_cache",
+                        lambda tkr, cutoff: (frames[tkr],
+                                             pss._candidate_values(tkr, frames[tkr])))
+    out = pss.run_stage1(cutoff=None)
+    assert set(out["asset"]) == {"AAA", "BBB"}
+    assert "survives_fdr" in out.columns
+    assert out["survives_fdr"].dtype == bool
+    # pooled: the column exists across BOTH assets in one frame (single BH pass)
+    assert out.groupby("asset")["survives_fdr"].count().min() > 0
+
+
+def test_run_stage1_skips_missing_asset(monkeypatch, capsys):
+    import pandasta_set_search as pss
+    df_a = synth_ohlcv(n=900, seed=11)
+    fake_universe = {"AAA": {"class": "equity"}, "GONE": {"class": "equity"}}
+    monkeypatch.setattr(pss, "UNIVERSE", fake_universe)
+    monkeypatch.setattr(pss, "return_mode", lambda t: "log")
+    def fake_cache(tkr, cutoff):
+        if tkr == "GONE":
+            raise FileNotFoundError(tkr)
+        return df_a, pss._candidate_values(tkr, df_a)
+    monkeypatch.setattr(pss, "indicator_series_cache", fake_cache)
+    out = pss.run_stage1(cutoff=None)
+    assert set(out["asset"]) == {"AAA"}
+    assert "SKIP GONE" in capsys.readouterr().out

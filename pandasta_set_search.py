@@ -52,7 +52,8 @@ def _candidate_values(tkr: str, df: pd.DataFrame) -> dict[str, tuple[str, pd.Ser
         except Exception as e:  # noqa: BLE001 — any indicator failure is a skip
             print(f"    skip {tkr} {cand.name}: {type(e).__name__}: {e}")
             continue
-        if x.iloc[Z_MIN:].notna().mean() < MIN_COVERAGE:
+        tail = x.iloc[Z_MIN:]
+        if len(tail) == 0 or tail.notna().mean() < MIN_COVERAGE:
             continue
         out[cand.name] = (cand.slot, x)
     return out
@@ -97,7 +98,11 @@ def run_stage1(cutoff: str | None, tickers: list[str] | None = None) -> pd.DataF
     for tkr in tickers:
         meta = UNIVERSE[tkr]
         print(f"  stage1 {tkr} (cutoff={cutoff}) ...")
-        df, values = indicator_series_cache(tkr, cutoff)
+        try:
+            df, values = indicator_series_cache(tkr, cutoff)
+        except FileNotFoundError:
+            print(f"  SKIP {tkr}: no cached data")
+            continue
         all_rows.extend(_screen_one_asset(tkr, meta["class"], df,
                                           return_mode(tkr), values))
     out = pd.DataFrame(all_rows)
@@ -105,4 +110,5 @@ def run_stage1(cutoff: str | None, tickers: list[str] | None = None) -> pd.DataF
     out["survives_fdr"] = False
     out.loc[pool, "survives_fdr"] = st.benjamini_hochberg(
         out.loc[pool, "p_value"].to_numpy(), FDR_Q)
+    out["survives_fdr"] = out["survives_fdr"].astype(bool)
     return out
