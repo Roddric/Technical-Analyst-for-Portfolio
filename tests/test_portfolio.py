@@ -76,3 +76,19 @@ def test_metrics_table_known_series():
     r2024 = m.loc["2024", "return"]
     assert r2024 == pytest.approx((1.001 ** 252) - 1, rel=1e-9)
     assert m.loc["2024", "max_dd"] == pytest.approx(0.0)
+
+
+def test_target_weights_raises_on_all_nan_signals():
+    idx = ["A", "B", "C"]
+    sig = pd.Series([np.nan, np.nan, np.nan], index=idx)
+    vol = pd.Series(0.2, index=idx)
+    with pytest.raises(ValueError, match="no assets with valid signals"):
+        target_weights(sig, vol, top_n=2)
+
+
+def test_backtest_raises_when_signals_never_valid():
+    days = pd.bdate_range("2024-01-01", periods=40)
+    rets = pd.DataFrame({"A": 0.01, "B": 0.0}, index=days)
+    sig = pd.DataFrame(np.nan, index=days, columns=["A", "B"])
+    with pytest.raises(ValueError, match="no assets with valid signals"):
+        run_backtest(rets, sig, start="2024-02-01", cost_per_side=0.0)

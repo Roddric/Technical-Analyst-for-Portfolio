@@ -20,9 +20,8 @@ import os
 import numpy as np
 import pandas as pd
 
-from pandasta_data import TRADABLE, UNIVERSE, load_asset, master_calendar
-from pandasta_set_search import (HORIZONS, STRATEGY_H, composite_signal,
-                                 indicator_series_cache)
+from pandasta_data import TRADABLE, load_asset, master_calendar
+from pandasta_set_search import composite_signal, indicator_series_cache
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 RESULTS = os.path.join(HERE, "results")
@@ -47,6 +46,8 @@ def rank_tilt(n_held: int) -> np.ndarray:
 def target_weights(signals: pd.Series, vols: pd.Series, top_n: int = TOP_N) -> pd.Series:
     """Long-only weights over `signals.index`; top_n held, rest zero."""
     s = signals.dropna()
+    if s.empty:
+        raise ValueError("target_weights: no assets with valid signals")
     held = s.sort_values(ascending=False).index[:min(top_n, len(s))]
     v = vols.reindex(held).astype("float64")
     v = v.where(v > 1e-8)                 # zero/NaN vol -> fallback below
@@ -143,7 +144,6 @@ def build_signals(cutoff_label: str) -> pd.DataFrame:
     (disclosed by caller)."""
     best = pd.read_csv(os.path.join(RESULTS, "pandasta_best_sets.csv"))
     winners = best[(best["is_winner"]) & (best["cutoff"] == cutoff_label)]
-    cutoff = None if cutoff_label == "FULL" else cutoff_label
     cal = master_calendar()
     sig = {}
     for _, r in winners.iterrows():
@@ -151,7 +151,7 @@ def build_signals(cutoff_label: str) -> pd.DataFrame:
         if tkr not in TRADABLE:
             continue
         # recompute members on FULL history (selection already frozen)
-        df, values = indicator_series_cache(tkr, None)
+        _df, values = indicator_series_cache(tkr, None)
         names = [r[c] for c in ("volume_ind", "trend_ind", "momentum_ind",
                                 "volatility_ind")
                  if isinstance(r[c], str) and r[c]]
@@ -196,6 +196,12 @@ def main() -> None:
     for label in ["2023-12-31", "FULL"]:
         tag = "OOS" if label != "FULL" else "IS"
         sig = build_signals(label)
+        if sig.shape[1] == 0:
+            print(f"!! {tag}: no winning sets found for cutoff {label} — variant SKIPPED")
+            lines += [f"## {tag} (selection window: {label})", "",
+                      "**SKIPPED — no winning sets in results/pandasta_best_sets.csv "
+                      "for this cutoff.** Re-run pandasta_set_search.py first.", ""]
+            continue
         missing = sorted(set(TRADABLE) - set(sig.columns))
         res = run_backtest(rets[sig.columns], sig)
         m = metrics_table(res["daily"], res["equity"])
