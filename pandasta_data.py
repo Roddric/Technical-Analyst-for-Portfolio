@@ -4,6 +4,7 @@ done by the consumer (portfolio_backtest) via reindex+ffill of CLOSE, so
 weekend crypto moves fold into the next trading day."""
 from __future__ import annotations
 
+import numpy as np
 import pandas as pd
 
 import price_cache
@@ -45,9 +46,9 @@ def volume_usable(df: pd.DataFrame) -> tuple[bool, pd.Series]:
     tail = v.loc[first:]
     frac = float((tail > 0).mean())
     masked = v.copy()
-    masked.loc[:first] = pd.NA
+    masked.loc[:first] = np.nan
     masked.loc[first] = v.loc[first]
-    masked = masked.where(masked > 0).astype("float64")
+    masked = masked.astype("float64")
     return frac >= MIN_NONZERO_VOL_FRAC, masked
 
 

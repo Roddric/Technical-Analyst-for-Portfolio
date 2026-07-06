@@ -29,6 +29,19 @@ def test_volume_usable_masks_zero_prefix():
     assert (masked.iloc[40:] > 0).all()
 
 
+def test_volume_interior_zeros_preserved():
+    idx = pd.bdate_range("2000-01-03", periods=100)
+    vals = [0.0] * 40 + [1e6] * 30 + [0.0] * 5 + [1e6] * 25
+    v = pd.Series(vals, index=idx)
+    df = pd.DataFrame({"open": 1.0, "high": 1.0, "low": 1.0,
+                       "close": 1.0, "volume": v}, index=idx)
+    ok, masked = volume_usable(df)
+    assert ok
+    assert masked.iloc[:40].isna().all()          # leading prefix -> NaN
+    assert (masked.iloc[70:75] == 0.0).all()      # interior zeros preserved
+    assert not masked.iloc[40:].isna().any()
+
+
 def test_volume_unusable_when_all_zero():
     idx = pd.bdate_range("2000-01-03", periods=100)
     df = pd.DataFrame({"open": 1.0, "high": 1.0, "low": 1.0,
