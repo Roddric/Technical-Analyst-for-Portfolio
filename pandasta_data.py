@@ -8,16 +8,24 @@ import numpy as np
 import pandas as pd
 
 import price_cache
-from grouped_ic_backtest import ASSETS
 
 UNIVERSE: dict = {
-    **ASSETS,
-    "BTC-USD": {"name": "Bitcoin", "class": "crypto"},
-    "ETH-USD": {"name": "Ethereum", "class": "crypto"},
+    "^GSPC":   {"name": "S&P 500",              "class": "equity"},
+    "^NDX":    {"name": "Nasdaq 100",           "class": "equity"},
+    "^FTSE":   {"name": "FTSE 100",             "class": "equity"},
+    "^KS11":   {"name": "KOSPI",                "class": "equity"},
+    "^N225":   {"name": "Nikkei 225",           "class": "equity"},
+    "^TWII":   {"name": "TAIEX",                "class": "equity"},
+    "ASHR":    {"name": "CSI 300 (ASHR proxy)", "class": "equity"},
+    "VEA":     {"name": "Developed ex-US (VEA)","class": "equity"},
+    "VWO":     {"name": "Emerging mkts (VWO)",  "class": "equity"},
+    "GC=F":    {"name": "Gold",                 "class": "metals"},
+    "SI=F":    {"name": "Silver",               "class": "metals"},
+    "CL=F":    {"name": "WTI crude",            "class": "energy"},
+    "BTC-USD": {"name": "Bitcoin",              "class": "crypto"},
+    "ETH-USD": {"name": "Ethereum",             "class": "crypto"},
 }
-
-# ^TNX is a yield level, not investable (TLT carries duration exposure)
-TRADABLE = [t for t in UNIVERSE if t != "^TNX"]
+TRADABLE = list(UNIVERSE)   # all 14 are tradable; no rates/fx anymore
 
 MIN_NONZERO_VOL_FRAC = 0.50
 

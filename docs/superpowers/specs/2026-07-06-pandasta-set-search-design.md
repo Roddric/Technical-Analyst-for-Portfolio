@@ -114,3 +114,21 @@ Environment note: module must `import importlib.metadata` before `import pandas_
   trading. IS variant is an upper bound, not a forecast. |IC| values are small; the tilt
   cap exists so weak signals cannot dominate risk balance. Index/FX assets are traded as
   proxies. rf = 0 in Sharpe. 2026 is a partial year (data through ~2026-07).
+
+## Revision v2 (2026-07-06)
+
+- **Universe replaced** by 14 assets: ^GSPC, ^NDX, ^FTSE, ^KS11, ^N225, ^TWII, ASHR,
+  VEA, VWO (equity); GC=F, SI=F (metals); CL=F (energy); BTC-USD, ETH-USD (crypto).
+  FX pairs, rates (^TNX/TLT), credit (HYG/LQD), DAX, STOXX and HSI are removed; TAIEX,
+  CSI 300 (via ASHR), VEA and VWO are added. All 14 are tradable
+  (`TRADABLE = list(UNIVERSE)`); with ^TNX gone, no asset uses `return_mode="diff"`
+  anymore (the `"log"` default stays). ASHR was chosen over the native 000300.SS index
+  because Yahoo's native CSI 300 history starts 2021-03 — too short for the ≤2023
+  selection window.
+- **Every set slot must be filled**: FDR survivors are preferred; if a slot has no
+  survivor, the best-|IC_IR| candidate is used as a fallback and flagged `fdr_pass=False`.
+- **Cash rule**: at each rebalance only positive-signal assets among the top 8 are held;
+  the freed weight sits in cash at 0%.
+- **Monthly holdings table** added to the report.
+- The slot-fallback and cash-rule implementation land in a parallel change; this revision
+  documents them.

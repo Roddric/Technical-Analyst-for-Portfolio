@@ -8,14 +8,15 @@ from pandasta_data import (UNIVERSE, TRADABLE, load_asset, master_calendar,
 def test_universe_has_crypto_and_classes():
     assert UNIVERSE["BTC-USD"]["class"] == "crypto"
     assert UNIVERSE["ETH-USD"]["class"] == "crypto"
-    assert len(UNIVERSE) == 20
-    assert "^TNX" not in TRADABLE and "BTC-USD" in TRADABLE
-    assert len(TRADABLE) == 19
+    assert len(UNIVERSE) == 14
+    assert len(TRADABLE) == 14
+    assert "^TNX" not in UNIVERSE
+    assert "ASHR" in TRADABLE
 
 
 def test_return_modes():
-    assert return_mode("^TNX") == "diff"
     assert return_mode("^GSPC") == "log"
+    assert return_mode("GC=F") == "log"
 
 
 def test_volume_usable_masks_zero_prefix():
@@ -56,3 +57,9 @@ def test_load_and_calendar():
     cal = master_calendar("2024-01-01")
     assert cal[0] >= pd.Timestamp("2024-01-01")
     assert cal.is_monotonic_increasing
+
+
+def test_all_universe_assets_cached():
+    for tkr in UNIVERSE:
+        df = load_asset(tkr)
+        assert df is not None and len(df) > 500, f"{tkr} missing/short cache"
