@@ -1,0 +1,4 @@
+__pycache__/
+fred_key.txt
+*.pyc
+.superpowers/
