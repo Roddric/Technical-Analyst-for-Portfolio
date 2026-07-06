@@ -15,7 +15,7 @@ def test_rank_tilt_bounds_and_order():
 
 def test_target_weights_long_only_sum1_topn():
     idx = [f"A{i}" for i in range(12)]
-    sig = pd.Series(np.linspace(1, -1, 12), index=idx)
+    sig = pd.Series(np.linspace(2.0, 0.1, 12), index=idx)
     vol = pd.Series(0.2, index=idx)
     w = target_weights(sig, vol, top_n=8)
     assert w.sum() == pytest.approx(1.0)
@@ -52,7 +52,8 @@ def test_backtest_accounting_two_asset_toy():
     assert not daily.isna().any()
     assert (res["equity"].iloc[-1] > 1.0)
     w = res["weights"]
-    assert np.allclose(w.sum(axis=1), 1.0)
+    # B has a negative signal -> dropped to cash; only A (half of top-2) held
+    assert np.allclose(w.sum(axis=1), 0.5)
     assert (w.values >= -1e-12).all()
 
 
@@ -84,6 +85,23 @@ def test_target_weights_raises_on_all_nan_signals():
     vol = pd.Series(0.2, index=idx)
     with pytest.raises(ValueError, match="no assets with valid signals"):
         target_weights(sig, vol, top_n=2)
+
+
+def test_negative_signals_go_to_cash():
+    idx = [f"A{i}" for i in range(10)]
+    sig = pd.Series([1.0]*4 + [-1.0]*6, index=idx)
+    vol = pd.Series(0.2, index=idx)
+    w = target_weights(sig, vol, top_n=8)
+    assert w[sig > 0].sum() == pytest.approx(0.5)   # 4 positive of top-8 -> half invested
+    assert (w[sig <= 0] == 0).all()
+
+
+def test_all_negative_signals_all_cash():
+    idx = ["A", "B", "C"]
+    sig = pd.Series([-0.5, -1.0, -2.0], index=idx)
+    vol = pd.Series(0.2, index=idx)
+    w = target_weights(sig, vol, top_n=8)
+    assert w.sum() == pytest.approx(0.0)
 
 
 def test_backtest_raises_when_signals_never_valid():

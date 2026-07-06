@@ -128,20 +128,44 @@ def composite_signal(members: list[pd.Series], signs: list[float]) -> pd.Series:
     return mat.mean(axis=1)          # NaN-tolerant mean across available members
 
 
-def _top_k_per_slot(s1_asset: pd.DataFrame) -> dict[str, list[str]]:
-    """slot -> up to TOP_K_PER_SLOT indicator names among FDR survivors,
-    ranked by max |ic_ir| across horizons."""
+def _top_k_per_slot(s1_asset: pd.DataFrame) -> tuple[dict[str, list[str]], set[str]]:
+    """slot -> up to TOP_K_PER_SLOT indicator names, plus the set of slots
+    that had to fall back to a non-survivor pick.
+
+    Preferred: FDR survivors, ranked by max |ic_ir| across horizons, top
+    TOP_K_PER_SLOT. Fallback: if a slot has stage-1 rows but zero survivors,
+    take the single best indicator in that slot by max |ic_ir| (ignoring NaN
+    ic_ir rows; if all NaN, use max |ic|). A slot with no stage-1 rows at
+    all is never fabricated and stays absent."""
     surv = s1_asset[s1_asset["survives_fdr"]]
     picks: dict[str, list[str]] = {}
+    fallback_slots: set[str] = set()
     for slot in SLOTS:
-        sl = surv[surv["slot"] == slot]
-        if sl.empty:
+        all_sl = s1_asset[s1_asset["slot"] == slot]
+        if all_sl.empty:
             continue
-        ranked = (sl.assign(a=sl["ic_ir"].abs())
-                    .groupby("indicator")["a"].max()
-                    .sort_values(ascending=False))
-        picks[slot] = list(ranked.index[:TOP_K_PER_SLOT])
-    return picks
+        sl = surv[surv["slot"] == slot]
+        if not sl.empty:
+            ranked = (sl.assign(a=sl["ic_ir"].abs())
+                        .groupby("indicator")["a"].max()
+                        .sort_values(ascending=False))
+            picks[slot] = list(ranked.index[:TOP_K_PER_SLOT])
+            continue
+        # fallback: no survivors, but stage-1 rows exist for this slot
+        ranked_ir = (all_sl.assign(a=all_sl["ic_ir"].abs())
+                          .groupby("indicator")["a"].max()
+                          .sort_values(ascending=False))
+        ranked_ir = ranked_ir[ranked_ir.notna()]
+        if not ranked_ir.empty:
+            best = ranked_ir.index[0]
+        else:
+            ranked_ic = (all_sl.assign(a=all_sl["ic"].abs())
+                              .groupby("indicator")["a"].max()
+                              .sort_values(ascending=False))
+            best = ranked_ic.index[0]
+        picks[slot] = [best]
+        fallback_slots.add(slot)
+    return picks, fallback_slots
 
 
 def _stage1_sign(s1_asset: pd.DataFrame, indicator: str) -> float:
@@ -159,7 +183,7 @@ def run_stage2(stage1_df: pd.DataFrame, cutoff: str | None,
     for tkr in tickers:
         s1 = stage1_df[stage1_df["asset"] == tkr]
         klass = UNIVERSE.get(tkr, {"class": "synthetic"})["class"]
-        picks = _top_k_per_slot(s1)
+        picks, fallback_slots = _top_k_per_slot(s1)
         if not picks:
             print(f"  stage2 {tkr}: no FDR survivors in any slot — skipped")
             continue
@@ -174,8 +198,10 @@ def run_stage2(stage1_df: pd.DataFrame, cutoff: str | None,
         for h in HORIZONS:
             st.assert_no_lookahead(fwd[h], h)
         slots_used = [s for s in SLOTS if s in picks]
+        fallback_str = ",".join(s for s in slots_used if s in fallback_slots)
         print(f"  stage2 {tkr}: slots={slots_used} "
-              f"combos={np.prod([len(picks[s]) for s in slots_used])}")
+              f"combos={np.prod([len(picks[s]) for s in slots_used])}"
+              + (f" fallback={fallback_str}" if fallback_str else ""))
         best_key, best_val = None, -np.inf
         for combo in itertools.product(*(picks[s] for s in slots_used)):
             members = [values[name][1] for name in combo]
@@ -203,6 +229,7 @@ def run_stage2(stage1_df: pd.DataFrame, cutoff: str | None,
                     "redundancy": redundancy,
                     "traded_sign": 1.0 if (np.isnan(ic) or ic >= 0) else -1.0,
                     "is_winner": False,
+                    "fdr_fallback_slots": fallback_str,
                 })
                 if h == STRATEGY_H and np.isfinite(ic_ir) and abs(ic_ir) > best_val:
                     best_val, best_key = abs(ic_ir), len(rows) - 1
@@ -223,15 +250,17 @@ def _write_best_sets_md(best: pd.DataFrame, path: str) -> None:
         lines.append(f"## Selection window: {cutoff}")
         lines.append("")
         lines.append("| asset | class | volume | trend | momentum | volatility "
-                     "| h | comp_IC | comp_IC_IR | redundancy | sign |")
-        lines.append("|---|---|---|---|---|---|---:|---:|---:|---:|---:|")
+                     "| h | comp_IC | comp_IC_IR | redundancy | sign | fallback |")
+        lines.append("|---|---|---|---|---|---|---:|---:|---:|---:|---:|---|")
         for _, r in grp[grp["is_winner"]].sort_values("asset").iterrows():
+            fallback_col = r.get("fdr_fallback_slots", "") or "-"
             lines.append(
                 f"| {r['asset']} | {r['asset_class']} | {r['volume_ind'] or '-'} "
                 f"| {r['trend_ind'] or '-'} | {r['momentum_ind'] or '-'} "
                 f"| {r['volatility_ind'] or '-'} | {r['horizon']} "
                 f"| {r['comp_ic']:+.4f} | {r['comp_ic_ir']:+.3f} "
-                f"| {r['redundancy']:.2f} | {r['traded_sign']:+.0f} |")
+                f"| {r['redundancy']:.2f} | {r['traded_sign']:+.0f} "
+                f"| {fallback_col} |")
         lines.append("")
     with open(path, "w", encoding="utf-8") as f:
         f.write("\n".join(lines))

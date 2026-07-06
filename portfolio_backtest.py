@@ -44,19 +44,30 @@ def rank_tilt(n_held: int) -> np.ndarray:
 
 
 def target_weights(signals: pd.Series, vols: pd.Series, top_n: int = TOP_N) -> pd.Series:
-    """Long-only weights over `signals.index`; top_n held, rest zero."""
+    """Long-only weights over `signals.index`; top_n held by signal, then
+    cash rule: only positive-signal members of that top-n are actually
+    invested (weights sum to n_positive / min(top_n, n_valid) <= 1); the
+    rest sits in cash (implicit — not part of the returned Series, whose
+    sum is the invested/risky fraction)."""
     s = signals.dropna()
     if s.empty:
         raise ValueError("target_weights: no assets with valid signals")
-    held = s.sort_values(ascending=False).index[:min(top_n, len(s))]
-    v = vols.reindex(held).astype("float64")
+    n_valid = len(s)
+    n_held = min(top_n, n_valid)
+    held = s.sort_values(ascending=False).index[:n_held]
+    positive = [a for a in held if s[a] > 0]
+    if not positive:
+        return pd.Series(0.0, index=signals.index)
+    v = vols.reindex(positive).astype("float64")
     v = v.where(v > 1e-8)                 # zero/NaN vol -> fallback below
     inv = 1.0 / v
     inv = inv.fillna(inv.mean() if np.isfinite(inv.mean()) else 1.0)
-    tilt = pd.Series(rank_tilt(len(held)), index=held)
+    tilt = pd.Series(rank_tilt(len(held)), index=held).reindex(positive)
     raw = inv * tilt
-    w = raw / raw.sum()
-    return w.reindex(signals.index).fillna(0.0)
+    w_pos = raw / raw.sum()
+    invested_fraction = len(positive) / n_held
+    w_pos = w_pos * invested_fraction
+    return w_pos.reindex(signals.index).fillna(0.0)
 
 
 # --------------------------------------------------------------- backtest ----
@@ -73,7 +84,7 @@ def run_backtest(daily_rets: pd.DataFrame, signals: pd.DataFrame,
     rebal_days = set(live[is_first.values])
 
     w = pd.Series(0.0, index=daily_rets.columns)
-    daily_out, weights_rows, turnover_rows = [], [], []
+    daily_out, weights_rows, turnover_rows, cash_rows = [], [], [], []
     for d in live:
         if d in rebal_days:
             prior = cal[cal < d]
@@ -85,22 +96,31 @@ def run_backtest(daily_rets: pd.DataFrame, signals: pd.DataFrame,
                 w = tgt
                 weights_rows.append(pd.Series(w, name=d))
                 turnover_rows.append(pd.Series({"turnover": dw / 2.0}, name=d))
+                cash_rows.append(pd.Series({"cash": 1.0 - float(w.sum())}, name=d))
             else:
                 cost = 0.0
         else:
             cost = 0.0
         r = daily_rets.loc[d].fillna(0.0)
-        rp = float((w * r).sum()) - cost
+        rp_pre_cost = float((w * r).sum())
+        rp = rp_pre_cost - cost
         daily_out.append(rp)
-        growth = w * (1.0 + r)
-        tot = growth.sum()
-        w = growth / tot if tot > 0 else w
+        # cash-aware drift: sleeve value w_i(1+r_i), portfolio grows by
+        # (1+rp_pre_cost); new risky weights are the sleeve values rescaled
+        # by the portfolio growth factor, so cash's share is the implicit
+        # remainder (1 - new_w.sum()) rather than being renormalized away.
+        denom = 1.0 + rp_pre_cost
+        if denom > 0:
+            w = w * (1.0 + r) / denom
+        # else: pathological (portfolio value <= 0) — keep w unchanged
     daily = pd.Series(daily_out, index=live, name="daily_return")
     equity = (1.0 + daily).cumprod()
     return {"daily": daily, "equity": equity,
             "weights": pd.DataFrame(weights_rows),
             "turnover": pd.concat(turnover_rows, axis=1).T["turnover"]
-            if turnover_rows else pd.Series(dtype=float)}
+            if turnover_rows else pd.Series(dtype=float),
+            "cash": pd.concat(cash_rows, axis=1).T["cash"]
+            if cash_rows else pd.Series(dtype=float)}
 
 
 # ---------------------------------------------------------------- metrics ----
@@ -183,14 +203,36 @@ def load_tradable_returns() -> pd.DataFrame:
     return pd.DataFrame(rets, index=cal)
 
 
+def _monthly_holdings_lines(tag: str, weights: pd.DataFrame,
+                            cash: pd.Series) -> list[str]:
+    """MD lines for the per-rebalance holdings table: one row per rebalance
+    date, held assets sorted by weight desc, plus 'CASH x%' when the cash
+    share exceeds 0.5%."""
+    lines = [f"### Monthly holdings — {tag}", "",
+             "| date | holdings |", "|---|---|"]
+    for d in weights.index:
+        row = weights.loc[d]
+        held = row[row > 1e-6].sort_values(ascending=False)
+        parts = [f"{t} {v * 100:.1f}%" for t, v in held.items()]
+        c = float(cash.loc[d]) if d in cash.index else 0.0
+        if c > 0.005:
+            parts.append(f"CASH {c * 100:.1f}%")
+        lines.append(f"| {d.date()} | {', '.join(parts)} |")
+    lines.append("")
+    return lines
+
+
 def main() -> None:
     os.makedirs(RESULTS, exist_ok=True)
     rets = load_tradable_returns()
     lines = ["# Portfolio backtest 2024-2026 — pandas_ta composite sets", "",
-             "> Long-only, 100% invested, top-8 signal-tilted inverse-vol, "
-             "monthly rebalance, 5 bps/side, rf=0. 2026 is partial (YTD). "
-             "Index/FX assets traded as proxies. FULL variant is IN-SAMPLE "
-             "(upper bound), OOS variant selected sets on data <= 2023-12-31.",
+             "> Long-only, top-8 by signal, signal-tilted inverse-vol weights; "
+             "assets with a non-positive composite signal among the top 8 are "
+             "replaced by cash at 0% (freed weight sits in cash, not "
+             "reinvested elsewhere). Monthly rebalance, 5 bps/side, rf=0. "
+             "2026 is partial (YTD). Index/FX assets traded as proxies. "
+             "FULL variant is IN-SAMPLE (upper bound), OOS variant selected "
+             "sets on data <= 2023-12-31.",
              ""]
     curves = {}
     for label in ["2023-12-31", "FULL"]:
@@ -214,6 +256,7 @@ def main() -> None:
                   "Annual turnover (sum of rebalance one-way): "
                   + ", ".join(f"{y}: {v:.2f}x" for y, v in ann_to.items()), ""]
         res["weights"].to_csv(os.path.join(RESULTS, f"portfolio_weights_{tag}.csv"))
+        lines += _monthly_holdings_lines(tag, res["weights"], res["cash"])
         print(f"\n=== {tag} ===\n{m.round(4)}")
     # benchmark: equal-weight buy & hold from backtest start
     live = rets.index[rets.index >= pd.Timestamp(BACKTEST_START)]

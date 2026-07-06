@@ -3,7 +3,7 @@ import pandas as pd
 import pytest
 
 import stats as st
-from pandasta_set_search import HORIZONS, FDR_Q, run_stage1, _screen_one_asset
+from pandasta_set_search import HORIZONS, FDR_Q, run_stage1, _screen_one_asset, _top_k_per_slot
 from tests.test_registry import synth_ohlcv
 
 
@@ -41,6 +41,34 @@ def test_cutoff_truncates_history():
     n_full = max(r["n_obs"] for r in rows_full)
     n_cut = max(r["n_obs"] for r in rows_cut)
     assert n_cut < n_full
+
+
+def test_top_k_per_slot_fallback_fills_empty_slot():
+    """slot 'trend' has stage-1 rows but zero FDR survivors; other slots have
+    survivors. _top_k_per_slot must still return a trend pick (fallback:
+    best |ic_ir|) and flag it in fallback_slots, while leaving survivor
+    slots unflagged."""
+    rows = []
+    # trend: two candidates, neither survives FDR
+    rows.append({"indicator": "trend_weak", "slot": "trend", "ic": 0.01,
+                "ic_ir": 0.05, "survives_fdr": False})
+    rows.append({"indicator": "trend_best", "slot": "trend", "ic": 0.03,
+                "ic_ir": 0.20, "survives_fdr": False})
+    # volume, momentum, volatility: each has a clear FDR survivor
+    for slot, name in [("volume", "vol_ind"), ("momentum", "mom_ind"),
+                       ("volatility", "atr_ind")]:
+        rows.append({"indicator": name, "slot": slot, "ic": 0.10,
+                    "ic_ir": 0.5, "survives_fdr": True})
+        rows.append({"indicator": f"{name}_loser", "slot": slot, "ic": 0.02,
+                    "ic_ir": 0.1, "survives_fdr": False})
+    s1 = pd.DataFrame(rows)
+    picks, fallback_slots = _top_k_per_slot(s1)
+    assert fallback_slots == {"trend"}
+    assert "trend" in picks
+    assert picks["trend"] == ["trend_best"]        # best |ic_ir| among the slot
+    for slot in ("volume", "momentum", "volatility"):
+        assert slot not in fallback_slots
+        assert slot in picks
 
 
 def test_run_stage1_pools_fdr_across_assets(monkeypatch):
