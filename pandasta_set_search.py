@@ -171,6 +171,8 @@ def run_stage2(stage1_df: pd.DataFrame, cutoff: str | None,
         close = df["close"].to_numpy(dtype="float64")
         mode = return_mode(tkr) if tkr in UNIVERSE else "log"
         fwd = {h: st.forward_returns(close, h, mode) for h in HORIZONS}
+        for h in HORIZONS:
+            st.assert_no_lookahead(fwd[h], h)
         slots_used = [s for s in SLOTS if s in picks]
         print(f"  stage2 {tkr}: slots={slots_used} "
               f"combos={np.prod([len(picks[s]) for s in slots_used])}")
@@ -206,6 +208,8 @@ def run_stage2(stage1_df: pd.DataFrame, cutoff: str | None,
                     best_val, best_key = abs(ic_ir), len(rows) - 1
         if best_key is not None:
             rows[best_key]["is_winner"] = True
+        else:
+            print(f"  stage2 {tkr}: no finite composite IC_IR at h={STRATEGY_H} — no winner emitted")
     return pd.DataFrame(rows)
 
 
