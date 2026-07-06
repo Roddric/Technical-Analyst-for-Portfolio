@@ -18,11 +18,34 @@ from __future__ import annotations
 import importlib.metadata  # noqa: F401  (must precede pandas_ta on py3.14)
 from dataclasses import dataclass, field
 
+import warnings
+
 import numpy as np
 import pandas as pd
 import pandas_ta as ta  # noqa: F401  (df.ta accessor)
+from pandas_ta.core import AnalysisIndicators as _PandasTAAccessor
 
 SLOTS = ("volume", "trend", "momentum", "volatility")
+
+
+def _ensure_pandas_ta_accessor() -> None:
+    """The 'ta' DataFrame accessor is contested: pandas_ta_classic (imported
+    by grouped_ic_backtest) registers the same name. Whichever library
+    registers last wins process-wide, so if anything has re-registered 'ta'
+    after us, silently reclaim it before computing.
+
+    Note: pd.DataFrame.ta accessed at the class level (obj=None) returns
+    pandas's CachedAccessor.__get__ result, which for obj is None returns
+    the registered accessor *class* itself (not a CachedAccessor wrapper
+    instance) -- see pandas.core.accessor.Accessor.__get__. So the identity
+    check is against pd.DataFrame.ta directly, not a nested ._accessor
+    attribute. Verified against pandas 3.0.3.
+    """
+    current = getattr(pd.DataFrame, "ta", None)
+    if current is not _PandasTAAccessor:
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", UserWarning)
+            pd.api.extensions.register_dataframe_accessor("ta")(_PandasTAAccessor)
 
 # fn -> reason, for the audit trail in reports
 EXCLUDED = {
@@ -159,6 +182,7 @@ def compute_candidate(df: pd.DataFrame, cand: Candidate) -> pd.Series:
     """Compute one candidate on a normalized OHLCV frame. Returns float64
     Series aligned to df.index (NaN where undefined). Raises on failure —
     caller decides whether to skip."""
+    _ensure_pandas_ta_accessor()
     if cand.derived == "atr_ratio":
         x = df.ta.atr() / df["close"]
         out = x

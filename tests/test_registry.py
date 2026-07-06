@@ -54,3 +54,22 @@ def test_causality_truncation_invariance():
             full, trunc, check_exact=False, rtol=1e-9, atol=1e-12,
             obj=f"causality violation in {cand.name}",
         )
+
+
+def test_accessor_hijack_recovery():
+    """compute_candidate must produce identical values even if
+    pandas_ta_classic re-registered the 'ta' accessor after import."""
+    df = synth_ohlcv()
+    cands = {c.name: c for c in build_candidates()}
+    cand = cands["MO-stc"]
+    baseline = compute_candidate(df, cand)
+
+    import pandas_ta_classic  # noqa: F401 -- hijacks the accessor on import
+    import warnings as _w
+    with _w.catch_warnings():
+        _w.simplefilter("ignore", UserWarning)
+        pd.api.extensions.register_dataframe_accessor("ta")(
+            pandas_ta_classic.core.AnalysisIndicators)
+
+    hijacked = compute_candidate(df, cand)
+    pd.testing.assert_series_equal(baseline, hijacked)
