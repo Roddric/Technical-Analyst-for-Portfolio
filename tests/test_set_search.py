@@ -103,3 +103,48 @@ def test_run_stage1_skips_missing_asset(monkeypatch, capsys):
     out = pss.run_stage1(cutoff=None)
     assert set(out["asset"]) == {"AAA"}
     assert "SKIP GONE" in capsys.readouterr().out
+
+
+from pandasta_set_search import causal_zscore, composite_signal, run_stage2
+
+
+def test_causal_zscore_is_causal_and_normalized():
+    rng = np.random.default_rng(3)
+    idx = pd.bdate_range("2010-01-04", periods=800)
+    x = pd.Series(rng.normal(0, 1, 800), index=idx)
+    z = causal_zscore(x)
+    assert z.iloc[:125].isna().all()          # min_periods honored
+    # causality: truncating the future never changes the past
+    z_cut = causal_zscore(x.iloc[:600])
+    pd.testing.assert_series_equal(z.iloc[:600], z_cut)
+    assert abs(z.iloc[300:].mean()) < 0.5     # roughly centered
+
+
+def test_composite_sign_alignment():
+    idx = pd.bdate_range("2010-01-04", periods=400)
+    a = pd.Series(np.linspace(0, 1, 400), index=idx)
+    comp_pos = composite_signal([a, a], [1.0, 1.0])
+    comp_mix = composite_signal([a, a], [1.0, -1.0])
+    # sign-aligned identical members reinforce; opposite signs cancel
+    assert comp_pos.iloc[350:].abs().mean() > comp_mix.iloc[350:].abs().mean()
+
+
+def test_stage2_picks_winner_per_asset():
+    df = synth_ohlcv(n=1200)
+    s1 = pd.DataFrame(_screen_one_asset("SYN", "equity", df, mode="log"))
+    s1["survives_fdr"] = True  # force survivors so the combo loop runs
+    import pandasta_set_search as pss
+    import pandas as _pd
+    # monkeypatch loading so run_stage2 sees the synthetic asset
+    pss_load = pss.indicator_series_cache
+    try:
+        pss.indicator_series_cache = lambda tkr, cutoff: (df, pss._candidate_values("SYN", df))
+        best = pss.run_stage2(s1, cutoff=None, tickers=["SYN"])
+    finally:
+        pss.indicator_series_cache = pss_load
+    winners = best[best["is_winner"]]
+    assert len(winners) == 1
+    w = winners.iloc[0]
+    assert w["horizon"] == 20
+    assert w["traded_sign"] in (1.0, -1.0)
+    assert 0 <= w["redundancy"] <= 1 or np.isnan(w["redundancy"])
