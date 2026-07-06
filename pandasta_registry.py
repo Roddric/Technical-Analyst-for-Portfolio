@@ -11,8 +11,7 @@ Rules (mirrors indicators.py design):
     dpo is forced centered=False (pandas_ta default is centered = lookahead).
     zigzag / ichimoku-style forward or repainting outputs are excluded.
   * Multi-column outputs contribute ONE explicit primary column.
-Probed against pandas_ta 0.4.24 on 2026-07-06; qqe and psar return empty at
-defaults on daily synthetic data and are excluded.
+Probed against pandas_ta 0.4.24 on 2026-07-06.
 """
 from __future__ import annotations
 
@@ -27,8 +26,7 @@ SLOTS = ("volume", "trend", "momentum", "volatility")
 
 # fn -> reason, for the audit trail in reports
 EXCLUDED = {
-    "qqe": "empty output at defaults (probe 2026-07-06)",
-    "psar": "empty output at defaults (probe 2026-07-06)",
+    "psar": "trailing-stop price levels (PSARl/PSARs)",
     "smc": "multi-structure output, no scalar primary line",
     "exhc": "sparse exhaustion counts, mostly NaN",
     "squeeze_pro": "duplicate of squeeze with binary flags",
@@ -74,6 +72,7 @@ PRIMARY_COL = {
     "kst": "KST_10_15_20_30_10_10_10_15",
     "macd": "MACDh_12_26_9",
     "ppo": "PPOh_12_26_9",
+    "qqe": "QQE_14_5_4.236",
     "rvgi": "RVGI_14_4",
     "smi": "SMI_5_20_5_1.0",
     "squeeze": "SQZ_20_2.0_20_1.5",
@@ -124,14 +123,12 @@ def _derived_candidates() -> list[Candidate]:
 
 def build_candidates() -> list[Candidate]:
     cats = {s: sorted(ta.Category[s]) for s in SLOTS}
-    volume_fns = set(cats["volume"]) | {"mfi"}
+    volume_fns = set(cats["volume"])
     out: list[Candidate] = []
     for slot in SLOTS:
         for fn in cats[slot]:
             if fn in EXCLUDED:
                 continue
-            if slot == "volatility" and fn == "bbands":
-                continue  # added via _derived_candidates as VO-BBP
             name = f"{SLOT_PREFIX[slot]}-{fn}"
             out.append(Candidate(
                 name=name, slot=slot, fn=fn,
@@ -179,4 +176,5 @@ def compute_candidate(df: pd.DataFrame, cand: Candidate) -> pd.Series:
         else:
             out = res
     out = pd.to_numeric(out, errors="coerce").astype("float64")
+    out = out.replace([np.inf, -np.inf], np.nan)
     return out.reindex(df.index)
