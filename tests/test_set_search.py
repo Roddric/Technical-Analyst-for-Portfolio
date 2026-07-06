@@ -176,3 +176,30 @@ def test_stage2_picks_winner_per_asset():
     assert w["horizon"] == 20
     assert w["traded_sign"] in (1.0, -1.0)
     assert 0 <= w["redundancy"] <= 1 or np.isnan(w["redundancy"])
+
+
+def test_run_stage2_fallback_stamps_fdr_fallback_slots():
+    """End-to-end coverage of run_stage2's fallback branch: a slot with
+    stage-1 rows but zero FDR survivors must fall back to its best-|ic_ir|
+    indicator (per _top_k_per_slot) and the winning row must carry that
+    slot's name in fdr_fallback_slots, while a slot that DID have survivors
+    must not appear there."""
+    df = synth_ohlcv(n=1200)
+    s1 = pd.DataFrame(_screen_one_asset("SYN", "equity", df, mode="log"))
+    assert (s1["slot"] == "trend").any(), "fixture must include a trend row"
+    # force every "trend" row to fail FDR; every other slot's rows survive
+    s1["survives_fdr"] = np.where(s1["slot"] == "trend", False, True)
+    import pandasta_set_search as pss
+    pss_load = pss.indicator_series_cache
+    try:
+        pss.indicator_series_cache = lambda tkr, cutoff: (df, pss._candidate_values("SYN", df))
+        best = pss.run_stage2(s1, cutoff=None, tickers=["SYN"])
+    finally:
+        pss.indicator_series_cache = pss_load
+    winners = best[best["is_winner"]]
+    assert len(winners) == 1
+    w = winners.iloc[0]
+    fallback_slots = set(w["fdr_fallback_slots"].split(",")) if w["fdr_fallback_slots"] else set()
+    assert "trend" in fallback_slots
+    # a slot that had survivors (e.g. momentum) must not be flagged as fallback
+    assert "momentum" not in fallback_slots

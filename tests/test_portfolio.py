@@ -110,3 +110,53 @@ def test_backtest_raises_when_signals_never_valid():
     sig = pd.DataFrame(np.nan, index=days, columns=["A", "B"])
     with pytest.raises(ValueError, match="no assets with valid signals"):
         run_backtest(rets, sig, start="2024-02-01", cost_per_side=0.0)
+
+
+def test_cash_drift_invariant_and_manual_reconstruction():
+    """Independent re-derivation of the cash-aware drift rule: w_new =
+    w*(1+r)/(1+rp_pre_cost), implicit cash = 1 - w.sum(). Reconstructs
+    run_backtest's daily-return series and rebalance/cost mechanics by hand
+    (mirroring the exact VOL_WINDOW/ANN rolling-vol call and rebalance-day
+    set construction) and checks it matches res["daily"] bit-for-bit, and
+    that res["cash"] is present and positive throughout — a regression
+    guard against reintroducing the old renormalize-to-100%-risky bug."""
+    days = pd.bdate_range("2024-01-01", periods=45)
+    rng = np.random.default_rng(9)
+    rets = pd.DataFrame(rng.normal(0.001, 0.02, (45, 3)),
+                        index=days, columns=["A", "B", "C"])
+    # A,B positive signal; C negative -> C to cash each rebalance
+    sig = pd.DataFrame({"A": 1.0, "B": 0.5, "C": -1.0}, index=days)
+    res = run_backtest(rets, sig, start="2024-01-15", cost_per_side=0.001)
+    live = rets.index[rets.index >= pd.Timestamp("2024-01-15")]
+    # manual reconstruction
+    w = pd.Series(0.0, index=["A", "B", "C"])
+    cash = 1.0
+    # mirrors run_backtest: vols = daily_rets.rolling(VOL_WINDOW).std() *
+    # sqrt(ANN), VOL_WINDOW=63, ANN=252, no min_periods override
+    vols = rets.rolling(63).std() * np.sqrt(252)
+    manual = []
+    months = pd.Series(live.month, index=live)
+    is_first = months.ne(months.shift(1).fillna(-1))
+    rebal = set(live[is_first.values])
+    for d in live:
+        cost = 0.0
+        if d in rebal:
+            prior = rets.index[rets.index < d]
+            if len(prior):
+                p = prior[-1]
+                tgt = target_weights(sig.loc[p], vols.loc[p])
+                cost = 0.001 * (tgt - w).abs().sum()
+                w = tgt
+                cash = 1.0 - w.sum()
+        r = rets.loc[d].fillna(0.0)
+        rp_pre = float((w * r).sum())
+        manual.append(rp_pre - cost)
+        denom = 1.0 + rp_pre
+        if denom > 0:
+            w = w * (1 + r) / denom
+        # else: pathological (portfolio value <= 0) -- keep w unchanged
+        cash = 1.0 - w.sum()          # invariant: risky+cash == 1
+        assert cash >= -1e-12
+    assert np.allclose(res["daily"].to_numpy(), np.array(manual), atol=1e-12)
+    # 2 of 3 assets positive -> invested_fraction = 2/3 -> cash = 1/3 each rebal
+    assert (res["cash"] > 0).all()

@@ -126,7 +126,8 @@ Environment note: module must `import importlib.metadata` before `import pandas_
   because Yahoo's native CSI 300 history starts 2021-03 — too short for the ≤2023
   selection window.
 - **Every set slot must be filled**: FDR survivors are preferred; if a slot has no
-  survivor, the best-|IC_IR| candidate is used as a fallback and flagged `fdr_pass=False`.
+  survivor, the best-|IC_IR| candidate is used as a fallback and flagged in the
+  `fdr_fallback_slots` column.
 - **Cash rule**: at each rebalance only positive-signal assets among the top 8 are held;
   the freed weight sits in cash at 0%.
 - **Monthly holdings table** added to the report.
