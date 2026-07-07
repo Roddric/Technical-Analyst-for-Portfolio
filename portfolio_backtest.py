@@ -73,15 +73,18 @@ def target_weights(signals: pd.Series, vols: pd.Series, top_n: int = TOP_N) -> p
 # --------------------------------------------------------------- backtest ----
 def run_backtest(daily_rets: pd.DataFrame, signals: pd.DataFrame,
                  start: str = BACKTEST_START,
-                 cost_per_side: float = COST_PER_SIDE) -> dict:
+                 cost_per_side: float = COST_PER_SIDE,
+                 rebal_months: int = 1) -> dict:
     """Daily accounting with weight drift; rebalance on the first trading day
-    of each month using data through the PRIOR day; costs on turnover."""
+    of every `rebal_months`-th calendar month (1 = monthly, 3 = quarterly on
+    Jan/Apr/Jul/Oct) using data through the PRIOR day; costs on turnover."""
     cal = daily_rets.index
     vols = daily_rets.rolling(VOL_WINDOW).std() * np.sqrt(ANN)
     live = cal[cal >= pd.Timestamp(start)]
     months = pd.Series(live.month, index=live)
     is_first = months.ne(months.shift(1).fillna(-1))
-    rebal_days = set(live[is_first.values])
+    on_cycle = ((months - 1) % rebal_months) == 0
+    rebal_days = set(live[(is_first & on_cycle).values])
 
     w = pd.Series(0.0, index=daily_rets.columns)
     daily_out, weights_rows, turnover_rows, cash_rows = [], [], [], []
@@ -204,11 +207,11 @@ def load_tradable_returns() -> pd.DataFrame:
 
 
 def _monthly_holdings_lines(tag: str, weights: pd.DataFrame,
-                            cash: pd.Series) -> list[str]:
+                            cash: pd.Series, freq_word: str = "Monthly") -> list[str]:
     """MD lines for the per-rebalance holdings table: one row per rebalance
     date, held assets sorted by weight desc, plus 'CASH x%' when the cash
     share exceeds 0.5%."""
-    lines = [f"### Monthly holdings — {tag}", "",
+    lines = [f"### {freq_word} holdings — {tag}", "",
              "| date | holdings |", "|---|---|"]
     for d in weights.index:
         row = weights.loc[d]
@@ -222,14 +225,17 @@ def _monthly_holdings_lines(tag: str, weights: pd.DataFrame,
     return lines
 
 
-def main() -> None:
+def main(rebal_months: int = 1) -> None:
     os.makedirs(RESULTS, exist_ok=True)
+    freq_word = {1: "Monthly", 3: "Quarterly"}.get(rebal_months,
+                                                   f"Every-{rebal_months}-month")
+    suffix = "" if rebal_months == 1 else f"_{rebal_months}m"
     rets = load_tradable_returns()
     lines = ["# Portfolio backtest 2024-2026 — pandas_ta composite sets", "",
              "> Long-only, top-8 by signal, signal-tilted inverse-vol weights; "
              "assets with a non-positive composite signal among the top 8 are "
              "replaced by cash at 0% (freed weight sits in cash, not "
-             "reinvested elsewhere). Monthly rebalance, 5 bps/side, rf=0. "
+             f"reinvested elsewhere). {freq_word} rebalance, 5 bps/side, rf=0. "
              "2026 is partial (YTD). Index/FX assets traded as proxies. "
              "FULL variant is IN-SAMPLE (upper bound), OOS variant selected "
              "sets on data <= 2023-12-31.",
@@ -245,7 +251,7 @@ def main() -> None:
                       "for this cutoff.** Re-run pandasta_set_search.py first.", ""]
             continue
         missing = sorted(set(TRADABLE) - set(sig.columns))
-        res = run_backtest(rets[sig.columns], sig)
+        res = run_backtest(rets[sig.columns], sig, rebal_months=rebal_months)
         m = metrics_table(res["daily"], res["equity"])
         ann_to = res["turnover"].groupby(res["turnover"].index.year).sum()
         curves[tag] = res["equity"]
@@ -255,8 +261,8 @@ def main() -> None:
                   "", m.round(4).to_markdown(), "",
                   "Annual turnover (sum of rebalance one-way): "
                   + ", ".join(f"{y}: {v:.2f}x" for y, v in ann_to.items()), ""]
-        res["weights"].to_csv(os.path.join(RESULTS, f"portfolio_weights_{tag}.csv"))
-        lines += _monthly_holdings_lines(tag, res["weights"], res["cash"])
+        res["weights"].to_csv(os.path.join(RESULTS, f"portfolio_weights_{tag}{suffix}.csv"))
+        lines += _monthly_holdings_lines(tag, res["weights"], res["cash"], freq_word)
         print(f"\n=== {tag} ===\n{m.round(4)}")
     # benchmark: equal-weight buy & hold from backtest start
     live = rets.index[rets.index >= pd.Timestamp(BACKTEST_START)]
@@ -278,12 +284,17 @@ def main() -> None:
     lines += ["## Benchmark: equal-weight buy & hold", "",
               mb.round(4).to_markdown(), ""]
     print(f"\n=== EW buy&hold ===\n{mb.round(4)}")
-    pd.DataFrame(curves).to_csv(os.path.join(RESULTS, "portfolio_equity_curves.csv"))
-    with open(os.path.join(RESULTS, "portfolio_backtest_2024_2026.md"),
-              "w", encoding="utf-8") as f:
+    pd.DataFrame(curves).to_csv(
+        os.path.join(RESULTS, f"portfolio_equity_curves{suffix}.csv"))
+    report = f"portfolio_backtest_2024_2026{suffix}.md"
+    with open(os.path.join(RESULTS, report), "w", encoding="utf-8") as f:
         f.write("\n".join(lines))
-    print("\nreport: results/portfolio_backtest_2024_2026.md")
+    print(f"\nreport: results/{report}")
 
 
 if __name__ == "__main__":
-    main()
+    import argparse
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--rebal-months", type=int, default=1,
+                    help="rebalance cadence in months (1=monthly, 3=quarterly)")
+    main(ap.parse_args().rebal_months)

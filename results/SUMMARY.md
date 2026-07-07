@@ -50,6 +50,17 @@ At each month's first trading day (deciding on the prior day's data): rank all 1
 
 **IS upper bound:** +77.1% full-period, Sharpe 1.87. **Equal-weight buy & hold benchmark:** +77.8%, vol 17.9%, Sharpe 1.39, maxDD −17.9%.
 
+### Quarterly-rebalance variant (same strategy, rebalance Jan/Apr/Jul/Oct)
+
+| Year | Qtr OOS return | Qtr Sharpe | Qtr maxDD | Monthly OOS return |
+|---|---:|---:|---:|---:|
+| 2024 | +9.3% | 1.39 | −4.7% | +7.6% |
+| 2025 | +26.3% | 2.05 | −13.9% | +34.7% |
+| 2026 YTD | +8.3% | 1.12 | −7.8% | +5.9% |
+| **Full** | **+49.5%** | **1.53** | **−13.9%** | **+53.5%** |
+
+Quarterly cuts turnover to ~1.6–1.9×/yr (from ~4–5× monthly), lowers vol (11.0% vs 12.3%) and edges out monthly on Sharpe (1.53 vs 1.46), but gives up 4pp of total return and takes a deeper max drawdown — a stale book sits unchanged for three months (the Oct-2025 rebalance went 62.5% cash for a full quarter, forfeiting most of monthly's late-2025 gains). Quarterly IS upper bound: +92.3%, Sharpe 2.25. Report: `results/portfolio_backtest_2024_2026_3m.md`; charts: https://claude.ai/code/artifact/8c31ecb8-bf65-44a1-a3cd-fd113a3dd66f
+
 ## Interpretation
 
 - **The strategy's edge is risk-adjusted, not raw return**: it beats the benchmark on Sharpe (1.46 vs 1.39) and drawdown (−11.2% vs −17.9%) but trails on total return, because it averaged only 72% invested in a strong bull period.
