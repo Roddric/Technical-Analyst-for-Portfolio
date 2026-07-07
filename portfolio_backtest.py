@@ -31,6 +31,7 @@ VOL_WINDOW = 63
 COST_PER_SIDE = 0.0005
 BACKTEST_START = "2024-01-01"
 ANN = 252
+DUST = 0.005          # post-smoothing weights below this are cut to zero
 
 
 # ---------------------------------------------------------------- weights ----
@@ -74,10 +75,18 @@ def target_weights(signals: pd.Series, vols: pd.Series, top_n: int = TOP_N) -> p
 def run_backtest(daily_rets: pd.DataFrame, signals: pd.DataFrame,
                  start: str = BACKTEST_START,
                  cost_per_side: float = COST_PER_SIDE,
-                 rebal_months: int = 1) -> dict:
+                 rebal_months: int = 1,
+                 smooth: float = 1.0) -> dict:
     """Daily accounting with weight drift; rebalance on the first trading day
     of every `rebal_months`-th calendar month (1 = monthly, 3 = quarterly on
-    Jan/Apr/Jul/Oct) using data through the PRIOR day; costs on turnover."""
+    Jan/Apr/Jul/Oct) using data through the PRIOR day; costs on turnover.
+
+    `smooth` is the partial-adjustment speed: at each rebalance the book moves
+    only `smooth` of the way from its current (drifted) weights toward the
+    target, so entries/exits fade in and out instead of snapping (1.0 = jump
+    fully to target, the classic behavior). The very first allocation from an
+    empty book always goes fully to target. Blended weights under DUST are cut
+    to zero (freed weight sits in cash) so exiting tails don't linger forever."""
     cal = daily_rets.index
     vols = daily_rets.rolling(VOL_WINDOW).std() * np.sqrt(ANN)
     live = cal[cal >= pd.Timestamp(start)]
@@ -94,6 +103,9 @@ def run_backtest(daily_rets: pd.DataFrame, signals: pd.DataFrame,
             if len(prior):
                 p = prior[-1]
                 tgt = target_weights(signals.loc[p], vols.loc[p])
+                if smooth < 1.0 and w.abs().sum() > 0:   # partial adjustment
+                    tgt = w + smooth * (tgt - w)
+                    tgt[tgt < DUST] = 0.0
                 dw = (tgt - w).abs().sum()
                 cost = cost_per_side * dw
                 w = tgt
@@ -225,17 +237,24 @@ def _monthly_holdings_lines(tag: str, weights: pd.DataFrame,
     return lines
 
 
-def main(rebal_months: int = 1) -> None:
+def main(rebal_months: int = 1, smooth: float = 1.0) -> None:
     os.makedirs(RESULTS, exist_ok=True)
     freq_word = {1: "Monthly", 3: "Quarterly"}.get(rebal_months,
                                                    f"Every-{rebal_months}-month")
-    suffix = "" if rebal_months == 1 else f"_{rebal_months}m"
+    suffix = ("" if rebal_months == 1 else f"_{rebal_months}m") + \
+             ("" if smooth >= 1.0 else f"_s{round(smooth * 100)}")
+    smooth_txt = ("" if smooth >= 1.0 else
+                  f" Turnover-smoothed: each rebalance moves only "
+                  f"{smooth:.0%} of the way from current to target weights "
+                  f"(entries/exits fade over several rebalances; blended "
+                  f"weights < {DUST:.1%} cut to cash).")
     rets = load_tradable_returns()
     lines = ["# Portfolio backtest 2024-2026 — pandas_ta composite sets", "",
              "> Long-only, top-8 by signal, signal-tilted inverse-vol weights; "
              "assets with a non-positive composite signal among the top 8 are "
              "replaced by cash at 0% (freed weight sits in cash, not "
-             f"reinvested elsewhere). {freq_word} rebalance, 5 bps/side, rf=0. "
+             f"reinvested elsewhere). {freq_word} rebalance, 5 bps/side, rf=0."
+             f"{smooth_txt} "
              "2026 is partial (YTD). Index/FX assets traded as proxies. "
              "FULL variant is IN-SAMPLE (upper bound), OOS variant selected "
              "sets on data <= 2023-12-31.",
@@ -251,7 +270,8 @@ def main(rebal_months: int = 1) -> None:
                       "for this cutoff.** Re-run pandasta_set_search.py first.", ""]
             continue
         missing = sorted(set(TRADABLE) - set(sig.columns))
-        res = run_backtest(rets[sig.columns], sig, rebal_months=rebal_months)
+        res = run_backtest(rets[sig.columns], sig, rebal_months=rebal_months,
+                           smooth=smooth)
         m = metrics_table(res["daily"], res["equity"])
         ann_to = res["turnover"].groupby(res["turnover"].index.year).sum()
         curves[tag] = res["equity"]
@@ -297,4 +317,8 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--rebal-months", type=int, default=1,
                     help="rebalance cadence in months (1=monthly, 3=quarterly)")
-    main(ap.parse_args().rebal_months)
+    ap.add_argument("--smooth", type=float, default=1.0,
+                    help="partial-adjustment speed per rebalance in (0, 1]; "
+                         "e.g. 0.5 moves halfway to target (1.0 = no smoothing)")
+    args = ap.parse_args()
+    main(args.rebal_months, args.smooth)

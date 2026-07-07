@@ -57,6 +57,39 @@ def test_backtest_accounting_two_asset_toy():
     assert (w.values >= -1e-12).all()
 
 
+def test_smoothing_partial_adjustment_exact():
+    # zero returns -> no drift, zero vol -> equal inverse-vol fallback, so the
+    # partial-adjustment blend is exactly checkable by hand
+    days = pd.bdate_range("2023-12-01", periods=90)
+    rets = pd.DataFrame({"A": 0.0, "B": 0.0}, index=days)
+    sig = pd.DataFrame({"A": 2.0, "B": 1.0}, index=days)
+    flip = days[days >= "2024-01-25"]
+    sig.loc[flip, "B"] = -1.0            # B turns negative before Feb rebalance
+    res = run_backtest(rets, sig, start="2024-01-01", cost_per_side=0.0,
+                       smooth=0.5)
+    w = res["weights"]
+    # first allocation from empty book jumps fully to target: tilt [1.5, 0.5]
+    assert w.iloc[0]["A"] == pytest.approx(0.75)
+    assert w.iloc[0]["B"] == pytest.approx(0.25)
+    # Feb target is A=0.5, B=0 (B negative -> cash); blend moves halfway there
+    assert w.iloc[1]["A"] == pytest.approx(0.75 + 0.5 * (0.5 - 0.75))
+    assert w.iloc[1]["B"] == pytest.approx(0.25 + 0.5 * (0.0 - 0.25))
+    # March blends again toward the same target: B fades, never snaps to 0
+    assert w.iloc[2]["B"] == pytest.approx(0.125 + 0.5 * (0.0 - 0.125))
+
+
+def test_smoothing_cuts_turnover():
+    days = pd.bdate_range("2023-12-01", periods=200)
+    rng = np.random.default_rng(7)
+    rets = pd.DataFrame(rng.normal(0.0005, 0.01, (200, 4)),
+                        index=days, columns=list("ABCD"))
+    sig = pd.DataFrame(rng.normal(0, 1, (200, 4)),
+                       index=days, columns=list("ABCD"))
+    hard = run_backtest(rets, sig, start="2024-01-01", smooth=1.0)
+    soft = run_backtest(rets, sig, start="2024-01-01", smooth=0.5)
+    assert soft["turnover"].iloc[1:].sum() < hard["turnover"].iloc[1:].sum()
+
+
 def test_costs_reduce_returns():
     days = pd.bdate_range("2024-01-01", periods=64)
     rng = np.random.default_rng(5)

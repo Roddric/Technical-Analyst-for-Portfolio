@@ -50,6 +50,19 @@ At each month's first trading day (deciding on the prior day's data): rank all 1
 
 **IS upper bound:** +77.1% full-period, Sharpe 1.87. **Equal-weight buy & hold benchmark:** +77.8%, vol 17.9%, Sharpe 1.39, maxDD −17.9%.
 
+### Turnover-smoothed monthly variant (partial adjustment, λ = 0.5)
+
+Each monthly rebalance moves only halfway from current (drifted) weights to target, so entries/exits fade over several months instead of snapping 15% → 0 → 15%; blended weights < 0.5% are cut to cash. Largest single-rebalance weight change drops from 28pp to 13pp; turnover halves to ~1.5–2.4×/yr.
+
+| Year | Smoothed OOS return | Sharpe | maxDD | Hard-monthly OOS return |
+|---|---:|---:|---:|---:|
+| 2024 | +6.9% | 0.97 | −5.5% | +7.6% |
+| 2025 | +31.7% | 2.48 | −11.6% | +34.7% |
+| 2026 YTD | +12.5% | 1.57 | −7.5% | +5.9% |
+| **Full** | **+58.5%** | **1.72** | **−11.6%** | +53.5% |
+
+Smoothing improves both return and Sharpe overall — the 2026 whipsaw months are where the hard rebalance bled. Sensitivity: λ = 1/3 gives +61.4% / Sharpe 1.83 at ~1.6×/yr turnover (`results/portfolio_backtest_2024_2026_s33.md`); λ was not selected out-of-sample. Report: `results/portfolio_backtest_2024_2026_s50.md`; charts: https://claude.ai/code/artifact/47767b26-4a6f-43d5-877d-02775577193d
+
 ### Quarterly-rebalance variant (same strategy, rebalance Jan/Apr/Jul/Oct)
 
 | Year | Qtr OOS return | Qtr Sharpe | Qtr maxDD | Monthly OOS return |
