@@ -29,8 +29,8 @@ SLOTS = ("volume", "trend", "momentum", "volatility")
 
 
 def _ensure_pandas_ta_accessor() -> None:
-    """The 'ta' DataFrame accessor is contested: pandas_ta_classic (imported
-    by grouped_ic_backtest) registers the same name. Whichever library
+    """The 'ta' DataFrame accessor is contested: pandas_ta_classic (if
+    installed and imported anywhere) registers the same name. Whichever library
     registers last wins process-wide, so if anything has re-registered 'ta'
     after us, silently reclaim it before computing.
 

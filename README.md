@@ -76,15 +76,13 @@ why, and target portfolio weights including cash, using the frozen backtested se
 | `results/` | All outputs — start with `results/SUMMARY.md` |
 | `tests/` | Pytest suite: causality, FDR pooling, cash accounting, smoothing math |
 | `docs/superpowers/` | Design spec and implementation plan |
-| `data_loader.py`, `macro_loader.py`, `indicators.py`, `main.py`, `grouped_ic_backtest.py`, `regime_*`, `walkforward_backtest.py`, `spot_check_tsi.py`, `final-backtest/phase1_segment.py`, `final-backtest/allocation_engine.py` | Earlier research tracks (grouped IC study, regime segmentation engine); independent of the main pipeline |
 
 ## Data notes
 
 - Price data ships in `price_cache/` (daily OHLCV pulled from Yahoo Finance) so all
   results reproduce offline. Yahoo data is for personal/research use — check their
-  terms before redistributing.
-- The legacy macro modules (`macro_loader.py`, regime engine) need a free FRED API
-  key in `fred_key.txt` (git-ignored — never commit it). The main pipeline does not.
+  terms before redistributing. Refresh via `python final-backtest/ta_advisor.py --refresh`
+  or `python price_cache.py`.
 - CSI 300 is proxied by the ASHR ETF; index legs (^GSPC etc.) are non-tradable
   proxies — live implementation needs futures/ETFs with their own costs.
 

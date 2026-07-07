@@ -5,11 +5,5 @@ scipy>=1.18
 pandas-ta-openbb>=0.4.24   # imports as `pandas_ta` (OpenBB-maintained fork)
 yfinance>=1.5
 pytest>=9.1                # test suite (tests/)
-pandas-ta-classic>=0.6.52  # legacy grouped_ic_backtest.py; also exercised by tests/test_registry.py
+pandas-ta-classic>=0.6.52  # tests/test_registry.py exercises the 'ta' accessor-conflict guard against it
 tabulate>=0.10             # pandas .to_markdown() in report writers
-
-# Optional — only needed for specific legacy modules; uncomment if you use them:
-# fredapi>=0.5.2           # macro_loader.py (FRED/ALFRED vintage data; needs fred_key.txt)
-# TA-Lib>=0.6.8            # indicators.py (requires the TA-Lib C library installed)
-# Markdown>=3.10           # md_to_pdf.py
-# xhtml2pdf>=0.2.17        # md_to_pdf.py
