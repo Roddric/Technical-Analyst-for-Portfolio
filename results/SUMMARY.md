@@ -63,6 +63,10 @@ Each monthly rebalance moves only halfway from current (drifted) weights to targ
 
 Smoothing improves both return and Sharpe overall — the 2026 whipsaw months are where the hard rebalance bled. Sensitivity: λ = 1/3 gives +61.4% / Sharpe 1.83 at ~1.6×/yr turnover (`results/portfolio_backtest_2024_2026_s33.md`); λ was not selected out-of-sample. Report: `results/portfolio_backtest_2024_2026_s50.md`; charts: https://claude.ai/code/artifact/47767b26-4a6f-43d5-877d-02775577193d
 
+### Signal-gated exits (`--exit-only-negative`, with smoothing)
+
+A holding may be sold fully to zero ONLY when its own composite signal is non-positive; a positive-signal holding that merely falls out of the top 8 is trimmed but floored at 0.5% until its signal flips (gross renormalized if floors overshoot 1). On 2024–2026 history the gate never binds — every full exit the smoothed strategy made was already signal-negative — so OOS/IS results are identical to the λ = 0.5 smoothed run above; the rule is now guaranteed by code rather than by coincidence. Report: `results/portfolio_backtest_2024_2026_s50_xn.md`; charts (equity graph shows IS vs OOS only): https://claude.ai/code/artifact/c0a925a7-b5c0-48d0-ad75-bb8269fc01f5
+
 ### Quarterly-rebalance variant (same strategy, rebalance Jan/Apr/Jul/Oct)
 
 | Year | Qtr OOS return | Qtr Sharpe | Qtr maxDD | Monthly OOS return |

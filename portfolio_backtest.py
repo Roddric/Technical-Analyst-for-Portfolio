@@ -76,7 +76,8 @@ def run_backtest(daily_rets: pd.DataFrame, signals: pd.DataFrame,
                  start: str = BACKTEST_START,
                  cost_per_side: float = COST_PER_SIDE,
                  rebal_months: int = 1,
-                 smooth: float = 1.0) -> dict:
+                 smooth: float = 1.0,
+                 exit_only_negative: bool = False) -> dict:
     """Daily accounting with weight drift; rebalance on the first trading day
     of every `rebal_months`-th calendar month (1 = monthly, 3 = quarterly on
     Jan/Apr/Jul/Oct) using data through the PRIOR day; costs on turnover.
@@ -86,7 +87,14 @@ def run_backtest(daily_rets: pd.DataFrame, signals: pd.DataFrame,
     target, so entries/exits fade in and out instead of snapping (1.0 = jump
     fully to target, the classic behavior). The very first allocation from an
     empty book always goes fully to target. Blended weights under DUST are cut
-    to zero (freed weight sits in cash) so exiting tails don't linger forever."""
+    to zero (freed weight sits in cash) so exiting tails don't linger forever.
+
+    `exit_only_negative`: a held asset may be sold all the way to zero ONLY
+    when its composite signal is non-positive. A positive-signal holding that
+    merely fell out of the top-N is trimmed toward zero but floored at DUST —
+    it keeps a token position until its signal actually turns negative (or it
+    re-enters the top-N). If floors push the gross above 1, weights are
+    renormalized to stay fully-funded long-only."""
     cal = daily_rets.index
     vols = daily_rets.rolling(VOL_WINDOW).std() * np.sqrt(ANN)
     live = cal[cal >= pd.Timestamp(start)]
@@ -105,7 +113,13 @@ def run_backtest(daily_rets: pd.DataFrame, signals: pd.DataFrame,
                 tgt = target_weights(signals.loc[p], vols.loc[p])
                 if smooth < 1.0 and w.abs().sum() > 0:   # partial adjustment
                     tgt = w + smooth * (tgt - w)
+                    if exit_only_negative:
+                        pos_held = (signals.loc[p].reindex(tgt.index) > 0) \
+                            & (w > 0) & (tgt < DUST)
+                        tgt[pos_held] = DUST             # no full exit while positive
                     tgt[tgt < DUST] = 0.0
+                    if tgt.sum() > 1.0:                  # floors can overshoot
+                        tgt = tgt / tgt.sum()
                 dw = (tgt - w).abs().sum()
                 cost = cost_per_side * dw
                 w = tgt
@@ -237,17 +251,24 @@ def _monthly_holdings_lines(tag: str, weights: pd.DataFrame,
     return lines
 
 
-def main(rebal_months: int = 1, smooth: float = 1.0) -> None:
+def main(rebal_months: int = 1, smooth: float = 1.0,
+         exit_only_negative: bool = False) -> None:
     os.makedirs(RESULTS, exist_ok=True)
     freq_word = {1: "Monthly", 3: "Quarterly"}.get(rebal_months,
                                                    f"Every-{rebal_months}-month")
     suffix = ("" if rebal_months == 1 else f"_{rebal_months}m") + \
-             ("" if smooth >= 1.0 else f"_s{round(smooth * 100)}")
+             ("" if smooth >= 1.0 else f"_s{round(smooth * 100)}") + \
+             ("_xn" if exit_only_negative else "")
     smooth_txt = ("" if smooth >= 1.0 else
                   f" Turnover-smoothed: each rebalance moves only "
                   f"{smooth:.0%} of the way from current to target weights "
                   f"(entries/exits fade over several rebalances; blended "
                   f"weights < {DUST:.1%} cut to cash).")
+    if exit_only_negative:
+        smooth_txt += (" Exit rule: a holding is sold fully to zero ONLY when "
+                       "its composite signal is non-positive; positive-signal "
+                       f"holdings that fall out of the top {TOP_N} are trimmed "
+                       f"but floored at {DUST:.1%}.")
     rets = load_tradable_returns()
     lines = ["# Portfolio backtest 2024-2026 — pandas_ta composite sets", "",
              "> Long-only, top-8 by signal, signal-tilted inverse-vol weights; "
@@ -271,7 +292,7 @@ def main(rebal_months: int = 1, smooth: float = 1.0) -> None:
             continue
         missing = sorted(set(TRADABLE) - set(sig.columns))
         res = run_backtest(rets[sig.columns], sig, rebal_months=rebal_months,
-                           smooth=smooth)
+                           smooth=smooth, exit_only_negative=exit_only_negative)
         m = metrics_table(res["daily"], res["equity"])
         ann_to = res["turnover"].groupby(res["turnover"].index.year).sum()
         curves[tag] = res["equity"]
@@ -320,5 +341,9 @@ if __name__ == "__main__":
     ap.add_argument("--smooth", type=float, default=1.0,
                     help="partial-adjustment speed per rebalance in (0, 1]; "
                          "e.g. 0.5 moves halfway to target (1.0 = no smoothing)")
+    ap.add_argument("--exit-only-negative", action="store_true",
+                    help="full exits to zero only for non-positive signals; "
+                         "positive-signal holdings outside the top-N keep a "
+                         "DUST-floor position (requires --smooth < 1)")
     args = ap.parse_args()
-    main(args.rebal_months, args.smooth)
+    main(args.rebal_months, args.smooth, args.exit_only_negative)

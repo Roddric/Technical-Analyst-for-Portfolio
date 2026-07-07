@@ -78,6 +78,32 @@ def test_smoothing_partial_adjustment_exact():
     assert w.iloc[2]["B"] == pytest.approx(0.125 + 0.5 * (0.0 - 0.125))
 
 
+def test_exit_only_negative_floor_and_zero():
+    # zero returns -> no drift; 9 assets so one positive-signal asset can sit
+    # outside the top-8. I starts in the top-8, falls out (still positive)
+    # after Jan, then turns negative after Oct.
+    days = pd.bdate_range("2023-12-01", periods=320)
+    cols = list("ABCDEFGH") + ["I"]
+    rets = pd.DataFrame(0.0, index=days, columns=cols)
+    sig = pd.DataFrame({c: 9.0 - i for i, c in enumerate("ABCDEFGH")},
+                       index=days)
+    sig["I"] = 10.0                                   # rank 1 in January
+    sig.loc[days >= "2024-01-20", "I"] = 0.5          # out of top-8, positive
+    sig.loc[days >= "2024-10-20", "I"] = -1.0         # finally negative
+    res = run_backtest(rets, sig, start="2024-01-01", cost_per_side=0.0,
+                       smooth=0.5, exit_only_negative=True)
+    w = res["weights"]["I"]
+    held_positive = w[(w.index >= "2024-02-01") & (w.index < "2024-11-01")]
+    # while the signal stays positive, I is trimmed but never sold to zero
+    assert (held_positive > 0).all()
+    # DUST floor (slightly below when the fully-funded renormalization bites)
+    assert held_positive.min() >= 0.005 * 0.98
+    # once negative, the fade is allowed to finish: I ends at exactly zero
+    assert w.iloc[-1] == 0.0
+    # long-only and fully-funded throughout despite the floor
+    assert (res["weights"].sum(axis=1) <= 1.0 + 1e-9).all()
+
+
 def test_smoothing_cuts_turnover():
     days = pd.bdate_range("2023-12-01", periods=200)
     rng = np.random.default_rng(7)
