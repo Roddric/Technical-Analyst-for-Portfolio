@@ -23,9 +23,14 @@ Usage:
     python ta_advisor.py --refresh           # update price cache first (Yahoo)
 
 Honesty notes baked into the output: fallback slots (no FDR survivor) are
-flagged per asset; the composite ICs are small; this is the same logic that
-produced the 2024-2026 OOS backtest (+53.5%, Sharpe 1.46) — see
+flagged per asset; the composite ICs are small; this is the same signal logic
+that produced the 2024-2026 OOS backtest (+58.5%, Sharpe 1.72) — see
 results/SUMMARY.md before trusting any recommendation.
+
+The weights reported here are the TARGET weights. The backtested strategy
+applies partial adjustment: each monthly rebalance trades only halfway from
+the current book toward these targets (lambda = 0.5), and a holding is sold
+fully to zero only when its own composite signal is non-positive.
 """
 from __future__ import annotations
 
@@ -167,13 +172,16 @@ def advise(window: str = "2023-12-31", date: str | None = None) -> dict:
         "selection_window": window,
         "strategy": (f"long-only; top {TOP_N} by composite signal; only "
                      "positive-signal assets held; inverse-vol x rank-tilt "
-                     "weights; remainder in cash at 0%"),
+                     "weights; remainder in cash at 0%. Weights below are "
+                     "TARGETS: trade halfway toward them (lambda=0.5) and "
+                     "sell a holding to zero only if its signal is "
+                     "non-positive"),
         "cash_weight": round(float(1 - weights.sum()), 4),
         "holdings": {a["asset"]: a["weight"] for a in assets if a["held"]},
         "assets": assets,
         "disclosures": [
             f"Sets frozen on the {window} selection window; no re-selection.",
-            "Composite ICs are small (0.02-0.13); this sized 1.46 OOS Sharpe "
+            "Composite ICs are small (0.02-0.13); this sized 1.72 OOS Sharpe "
             "2024-2026 but trailed equal-weight buy&hold on raw return.",
             "fdr_fallback_slots lists slots whose indicator did NOT survive "
             "the false-discovery gate (weaker evidence).",

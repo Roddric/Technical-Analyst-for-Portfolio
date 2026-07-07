@@ -8,15 +8,13 @@ energy, crypto).
 
 **Headline result (out-of-sample: indicator sets frozen on data ≤ 2023-12-31):**
 
-| Variant | Full-period return | Ann. vol | Sharpe (rf=0) | Max DD | Turnover |
+| | Full-period return | Ann. vol | Sharpe (rf=0) | Max DD | Turnover |
 |---|---:|---:|---:|---:|---:|
-| Monthly, smoothed (λ=0.5) + signal-gated exits | **+58.5%** | 11.2% | **1.72** | −11.6% | ~1.5–2.4×/yr |
-| Monthly, hard rebalance | +53.5% | 12.3% | 1.46 | −11.2% | ~3–5×/yr |
-| Quarterly rebalance | +49.5% | 11.0% | 1.53 | −13.9% | ~1.6–1.9×/yr |
+| Strategy | **+58.5%** | 11.2% | **1.72** | −11.6% | ~1.5–2.4×/yr |
 | Equal-weight buy & hold (benchmark) | +77.8% | 17.9% | 1.39 | −17.9% | — |
 
 The strategy's edge is **risk-adjusted**, not raw return: it beats buy & hold on Sharpe
-and drawdown while averaging only ~72% invested. Full results, per-asset indicator
+and drawdown while averaging only ~71% invested. Full results, per-asset indicator
 sets, and caveats: [`results/SUMMARY.md`](results/SUMMARY.md).
 
 ## How it works
@@ -33,10 +31,12 @@ sets, and caveats: [`results/SUMMARY.md`](results/SUMMARY.md).
 3. **Portfolio** (`portfolio_backtest.py`): monthly rebalance deciding on prior-day
    data — rank all assets by composite signal, hold the top 8, park any
    negative-signal name in **cash at 0%**, weight the rest by inverse 63-day vol ×
-   rank tilt, 5 bps/side costs. Optional: `--smooth` partial adjustment (weights move
-   only a fraction toward target, so exits fade instead of snapping to zero),
-   `--exit-only-negative` (full liquidation only when the asset's own signal is
-   non-positive), `--rebal-months 3` (quarterly).
+   rank tilt, 5 bps/side costs. Two stabilizers are built into the strategy:
+   **turnover smoothing** (each rebalance moves only halfway from current to target
+   weights, so entries/exits fade over months instead of snapping 15% → 0 → 15%)
+   and **signal-gated exits** (a holding may be liquidated fully only when its own
+   composite signal is non-positive; falling out of the top 8 alone just trims it,
+   floored at 0.5%).
 
 **Look-ahead discipline:** OOS sets are selected on ≤2023 data only; all indicator
 transforms are truncation-invariance tested; `dpo` is forced non-centered; the FDR
@@ -51,9 +51,7 @@ pip install -r requirements.txt
 pytest tests -q                              # 36 tests
 
 python pandasta_set_search.py                # rebuild indicator-set selection
-python portfolio_backtest.py                 # monthly backtest (OOS + IS + benchmark)
-python portfolio_backtest.py --smooth 0.5 --exit-only-negative
-python portfolio_backtest.py --rebal-months 3
+python portfolio_backtest.py                 # backtest (OOS + IS + benchmark)
 python final-backtest/ta_advisor.py          # current advice: signals, holds, weights
 ```
 
@@ -69,7 +67,7 @@ why, and target portfolio weights including cash, using the frozen backtested se
 | `pandasta_registry.py` | Curated `pandas_ta` candidates, exclusions with reasons, causality guards |
 | `pandasta_data.py` | 14-asset universe, price loading, master trading calendar |
 | `pandasta_set_search.py` | Two-stage indicator-set search (FDR screen → joint composite) |
-| `portfolio_backtest.py` | Portfolio construction + backtest engine (smoothing, exit gate, cadence) |
+| `portfolio_backtest.py` | Portfolio construction + backtest engine (smoothing, exit gate) |
 | `final-backtest/ta_advisor.py` | Single agent-facing CLI: analyze assets, list holds, output weights |
 | `stats.py` | Audited IC / HAC / FDR statistics used by everything above |
 | `price_cache/`, `price_cache.py` | Cached daily OHLCV CSVs (Yahoo Finance, through 2026-07) |
@@ -90,7 +88,7 @@ why, and target portfolio weights including cash, using the frozen backtested se
 
 Composite ICs are small (0.02–0.13). Selection uses a single frozen cutoff, not
 walk-forward re-selection; the IS variant is an in-sample upper bound (IS−OOS gap
-≈ 24pp is the measured overfitting cost). Smoothing λ and rebalance cadence were
-compared, not selected out-of-sample. 2026 is a partial year. Sharpe uses rf=0.
+≈ 28pp is the measured overfitting cost). The smoothing speed (λ=0.5) was not
+selected out-of-sample. 2026 is a partial year. Sharpe uses rf=0.
 
 **This is research code. Nothing here is investment advice.**

@@ -1,12 +1,15 @@
 """
 portfolio_backtest.py
 =====================
-Long-only, 100%-invested, monthly-rebalanced portfolio built from the per-asset
-composite technical signals selected by pandasta_set_search.
+Long-only, monthly-rebalanced, turnover-smoothed portfolio built from the
+per-asset composite technical signals selected by pandasta_set_search.
 
 Ranking -> weights (first trading day each month, decision on prior day data):
-  hold top N=8 by composite signal; weight ∝ (1/vol_63d) * tilt,
-  tilt = 1 + 0.5 * scaled_rank in [0.5, 1.5]; normalized; 5 bps per side.
+  hold top N=8 by composite signal; negative-signal names sit in cash at 0%;
+  weight ∝ (1/vol_63d) * tilt, tilt = 1 + 0.5 * scaled_rank in [0.5, 1.5];
+  each rebalance moves only halfway (smooth=0.5) from current to target
+  weights, and a holding may be liquidated fully only when its own signal is
+  non-positive (exit_only_negative); 5 bps per side.
 
 Variants: OOS (sets chosen on data <= 2023-12-31) vs FULL (in-sample upper
 bound), reported side by side. Benchmark: equal-weight buy & hold.
@@ -251,14 +254,18 @@ def _monthly_holdings_lines(tag: str, weights: pd.DataFrame,
     return lines
 
 
-def main(rebal_months: int = 1, smooth: float = 1.0,
-         exit_only_negative: bool = False) -> None:
+def main(rebal_months: int = 1, smooth: float = 0.5,
+         exit_only_negative: bool = True) -> None:
+    """Defaults ARE the strategy: monthly, half-way smoothing, signal-gated
+    exits. Non-default parameter combinations write suffixed files so the
+    canonical results are never silently overwritten."""
     os.makedirs(RESULTS, exist_ok=True)
     freq_word = {1: "Monthly", 3: "Quarterly"}.get(rebal_months,
                                                    f"Every-{rebal_months}-month")
     suffix = ("" if rebal_months == 1 else f"_{rebal_months}m") + \
-             ("" if smooth >= 1.0 else f"_s{round(smooth * 100)}") + \
-             ("_xn" if exit_only_negative else "")
+             ("_nosmooth" if smooth >= 1.0 else
+              "" if round(smooth * 100) == 50 else f"_s{round(smooth * 100)}") + \
+             ("" if exit_only_negative else "_anyexit")
     smooth_txt = ("" if smooth >= 1.0 else
                   f" Turnover-smoothed: each rebalance moves only "
                   f"{smooth:.0%} of the way from current to target weights "
@@ -337,13 +344,15 @@ if __name__ == "__main__":
     import argparse
     ap = argparse.ArgumentParser()
     ap.add_argument("--rebal-months", type=int, default=1,
-                    help="rebalance cadence in months (1=monthly, 3=quarterly)")
-    ap.add_argument("--smooth", type=float, default=1.0,
+                    help="rebalance cadence in months (default 1 = monthly)")
+    ap.add_argument("--smooth", type=float, default=0.5,
                     help="partial-adjustment speed per rebalance in (0, 1]; "
-                         "e.g. 0.5 moves halfway to target (1.0 = no smoothing)")
-    ap.add_argument("--exit-only-negative", action="store_true",
-                    help="full exits to zero only for non-positive signals; "
-                         "positive-signal holdings outside the top-N keep a "
-                         "DUST-floor position (requires --smooth < 1)")
+                         "default 0.5 moves halfway to target each month "
+                         "(1.0 = classic hard rebalance)")
+    ap.add_argument("--exit-only-negative", default=True,
+                    action=argparse.BooleanOptionalAction,
+                    help="full exits to zero only for non-positive signals "
+                         "(default on); positive-signal holdings outside the "
+                         "top-N keep a DUST-floor position")
     args = ap.parse_args()
     main(args.rebal_months, args.smooth, args.exit_only_negative)
