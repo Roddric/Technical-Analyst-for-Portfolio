@@ -266,6 +266,74 @@ def _write_best_sets_md(best: pd.DataFrame, path: str) -> None:
         f.write("\n".join(lines))
 
 
+def run_walkforward_selection(cutoffs: list[str], tickers: list[str] | None = None,
+                              skip_existing: bool = True) -> pd.DataFrame:
+    """Run the two-stage selection at each as-of `cutoff` (date string) and
+    UPSERT the results into results/pandasta_stage1_ic.csv and
+    pandasta_best_sets.csv, keyed by their existing `cutoff` column.
+
+    Selection is deterministic, so a cutoff already present in the CSV (e.g. the
+    canonical 2023-12-31 OOS epoch, or FULL) is reused untouched by default —
+    this keeps the first walk-forward epoch bit-identical to the frozen OOS
+    sets, which is what makes the continuity check meaningful. Pass
+    skip_existing=False to force recomputation of the listed cutoffs.
+
+    Only rows for the recomputed cutoffs are rewritten; all other cutoffs
+    already in the CSVs (notably FULL) are preserved. Returns the winning-set
+    rows for the requested `cutoffs`.
+    """
+    os.makedirs(RESULTS, exist_ok=True)
+    s1_path = os.path.join(RESULTS, "pandasta_stage1_ic.csv")
+    best_path = os.path.join(RESULTS, "pandasta_best_sets.csv")
+    s1_existing = pd.read_csv(s1_path) if os.path.exists(s1_path) else None
+    best_existing = pd.read_csv(best_path) if os.path.exists(best_path) else None
+    # A cutoff counts as already-selected only if its existing winners cover
+    # every requested ticker — a partial (e.g. --smoke, single-asset) selection
+    # must NOT block a later full run from completing the remaining assets.
+    requested = set(tickers) if tickers else set(UNIVERSE)
+
+    def _covered(cutoff: str) -> bool:
+        if best_existing is None:
+            return False
+        won = set(best_existing.loc[(best_existing["cutoff"] == cutoff)
+                                    & best_existing["is_winner"], "asset"])
+        return requested <= won
+
+    s1_new, best_new = [], []
+    for cutoff in cutoffs:
+        if skip_existing and _covered(cutoff):
+            print(f"  walkforward: cutoff {cutoff} already selected "
+                  f"(all {len(requested)} requested assets) — reusing")
+            continue
+        print(f"=== walkforward selection (cutoff={cutoff}) ===")
+        s1 = run_stage1(cutoff, tickers)
+        s1["cutoff"] = cutoff
+        s1_new.append(s1)
+        best_new.append(run_stage2(s1, cutoff, tickers))
+
+    if not s1_new:                      # everything reused — nothing to write
+        return (best_existing[best_existing["cutoff"].isin(cutoffs)].copy()
+                if best_existing is not None else pd.DataFrame())
+
+    recomputed = {c for df in s1_new for c in df["cutoff"].unique()}
+
+    def _upsert(existing, new_frames):
+        parts = []
+        if existing is not None:
+            parts.append(existing[~existing["cutoff"].isin(recomputed)])
+        parts.extend(new_frames)
+        return pd.concat(parts, ignore_index=True)
+
+    s1_all = _upsert(s1_existing, s1_new)
+    best_all = _upsert(best_existing, best_new)
+    s1_all.to_csv(s1_path, index=False)
+    best_all.to_csv(best_path, index=False)
+    _write_best_sets_md(best_all, os.path.join(RESULTS, "pandasta_best_sets.md"))
+    print(f"walkforward selection: upserted cutoffs {sorted(recomputed)} "
+          f"({int(best_all['is_winner'].sum())} winning sets total on file)")
+    return best_all[best_all["cutoff"].isin(cutoffs)].copy()
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--smoke", action="store_true", help="^GSPC, OOS only")
