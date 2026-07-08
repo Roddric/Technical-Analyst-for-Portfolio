@@ -235,6 +235,71 @@ def load_tradable_returns() -> pd.DataFrame:
     return pd.DataFrame(rets, index=cal)
 
 
+def equal_weight_buyhold(daily_rets: pd.DataFrame,
+                         start: str = BACKTEST_START) -> tuple[pd.Series, pd.Series]:
+    """Equal-weight, fully-invested buy&hold benchmark from `start`: seed equal
+    weights over the assets that ever have a return in-window, then let them
+    drift with daily returns (no rebalancing). Returns (daily, equity)."""
+    live = daily_rets.index[daily_rets.index >= pd.Timestamp(start)]
+    valid_cols = [c for c in daily_rets.columns
+                  if daily_rets[c].loc[live].notna().any()]
+    w = pd.Series(1.0 / len(valid_cols), index=valid_cols)
+    out = []
+    for d in live:
+        r = daily_rets.loc[d, valid_cols].fillna(0.0)
+        out.append(float((w * r).sum()))
+        g = w * (1 + r)
+        w = g / g.sum()
+    daily = pd.Series(out, index=live)
+    return daily, (1 + daily).cumprod()
+
+
+# ---------------------------------------------------- walk-forward (v2 · F1) ---
+# Annual re-selection cutoffs (expanding window). The set chosen at each cutoff
+# governs the following year's monthly rebalances; see governing_cutoff.
+WF_CUTOFFS = ["2023-12-31", "2024-12-31", "2025-12-31"]
+
+# A month-end rebalance DECISION is made on the prior trading day (often the
+# last trading day of the previous month, e.g. 2023-12-29 for the Jan-2024
+# rebalance) and feeds a rebalance a few days later. So a decision may legally
+# use a set whose cutoff is slightly AFTER the decision date but still strictly
+# before the rebalance it feeds (2023-12-31 cutoff -> Jan-2024 rebalance). This
+# short lead maps a decision date to the rebalance it feeds so the year-end set
+# governs the next year's rebalances (including the trailing December decision).
+SELECTION_LEAD = pd.Timedelta(days=7)
+
+
+def governing_cutoff(date, cutoffs=WF_CUTOFFS, lead: pd.Timedelta = SELECTION_LEAD):
+    """The selection cutoff whose indicator set governs a rebalance decision
+    made on `date`: the latest cutoff strictly before the rebalance that
+    decision feeds (approximated as `date + lead`). Returns None if no set is
+    selectable yet. Guarantees a set is never applied to a rebalance that
+    occurs on or before its own data cutoff (no look-ahead)."""
+    horizon = pd.Timestamp(date) + lead
+    prior = [c for c in sorted(cutoffs) if pd.Timestamp(c) < horizon]
+    return prior[-1] if prior else None
+
+
+def build_walkforward_signals(cutoffs: list[str] = WF_CUTOFFS) -> pd.DataFrame:
+    """Time-varying composite signals: each date's row is drawn from the set
+    selected at the cutoff that governs it (governing_cutoff). Reuses
+    build_signals per cutoff and splices by date. Because 2024 rebalances are
+    all governed by the 2023-12-31 epoch, the 2024 slice is bit-identical to the
+    frozen OOS signal — the continuity guarantee the harness is checked against.
+    Assets absent from a given epoch's winners are NaN for that epoch's dates."""
+    cutoffs = sorted(cutoffs)
+    frames = {c: build_signals(c) for c in cutoffs}
+    cal = frames[cutoffs[0]].index
+    cols = sorted(set().union(*(f.columns for f in frames.values())))
+    gov = np.array([governing_cutoff(d, cutoffs) for d in cal], dtype=object)
+    out = pd.DataFrame(np.nan, index=cal, columns=cols)
+    for c in cutoffs:
+        mask = gov == c
+        if mask.any():
+            out.loc[mask, :] = frames[c].reindex(columns=cols).to_numpy()[mask]
+    return out
+
+
 def _monthly_holdings_lines(tag: str, weights: pd.DataFrame,
                             cash: pd.Series, freq_word: str = "Monthly") -> list[str]:
     """MD lines for the per-rebalance holdings table: one row per rebalance
@@ -313,20 +378,7 @@ def main(rebal_months: int = 1, smooth: float = 0.5,
         lines += _monthly_holdings_lines(tag, res["weights"], res["cash"], freq_word)
         print(f"\n=== {tag} ===\n{m.round(4)}")
     # benchmark: equal-weight buy & hold from backtest start
-    live = rets.index[rets.index >= pd.Timestamp(BACKTEST_START)]
-    valid_cols = [c for c in rets.columns
-                  if rets[c].loc[live].notna().any()]
-    bh_w = pd.Series(1.0 / len(valid_cols), index=valid_cols)
-    bh_daily = []
-    w = bh_w.copy()
-    for d in live:
-        r = rets.loc[d, valid_cols].fillna(0.0)
-        rp = float((w * r).sum())
-        bh_daily.append(rp)
-        g = w * (1 + r)
-        w = g / g.sum()
-    bh = pd.Series(bh_daily, index=live)
-    bh_eq = (1 + bh).cumprod()
+    bh, bh_eq = equal_weight_buyhold(rets)
     mb = metrics_table(bh, bh_eq)
     curves["EW_BH"] = bh_eq
     lines += ["## Benchmark: equal-weight buy & hold", "",

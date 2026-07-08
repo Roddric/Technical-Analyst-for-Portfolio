@@ -63,9 +63,24 @@ At each month's first trading day (deciding on the prior day's data):
 - **2026 YTD beats the benchmark** (+12.5% vs +11.4%) with a shallower drawdown — fading exits kept more of the rebound around the March and June sell-offs.
 - **IS−OOS gap ≈ 28pp** over the full period: the measured cost of selection overfitting. Expect live results closer to OOS than IS.
 
+## Walk-forward re-selection (v2 · F1)
+
+The numbers above freeze each asset's set on a **single** cutoff (≤ 2023-12-31). `walkforward.py` instead **re-selects annually** on an expanding window (cutoffs 2023-12-31 → 2024-12-31 → 2025-12-31; each set governs the following year's monthly rebalances) and backtests the identical strategy. This is the honest test of whether the edge is a lucky-cutoff artifact.
+
+| Variant | Full return | Ann. vol | Sharpe | Max DD |
+|---|---:|---:|---:|---:|
+| **Walk-forward (re-selected)** | **+63.3%** | 10.6% | **1.91** | −10.6% |
+| Frozen OOS (single cutoff) | +58.5% | 11.2% | 1.72 | −11.6% |
+| In-sample (upper bound) | +86.8% | 11.7% | 2.21 | −10.3% |
+
+- **Continuity check passes:** walk-forward 2024 = +6.9%, bit-identical to frozen OOS 2024 (2024's rebalances are all governed by the 2023-12-31 epoch) — confirms the date-stitching.
+- **Re-selection improves on the frozen cutoff** on return, Sharpe *and* drawdown, and narrows the overfit gap: IS − walk-forward = **23.5pp** vs the frozen IS − OOS = **28.3pp**.
+- **Set stability** across cutoffs is moderate: `^N225`/`^TWII` unchanged in all 4 slots, the trend slot is `dpo`-dominant, `VWO` churns most (2.5/4 per step). No sign of noise-fitting.
+- **Honest limit:** only 3 annual epochs (2026 partial) — a directional robustness floor, not a statistically rich validation. Full report: `results/portfolio_backtest_walkforward.md`.
+
 ## Caveats (read before acting on any number)
 
-Flat-history selection, not regime-conditioned; single frozen cutoff, not walk-forward re-selection. Composite ICs are small (0.02–0.13). Fallback slots bypass the FDR gate. The smoothing speed (λ = 0.5) was not selected out-of-sample. Index legs (^GSPC etc.) are proxies — live implementation needs futures/ETFs with their own costs. rf=0 in Sharpe. 2026 is half a year. Yahoo data quality applies throughout.
+Flat-history selection, not regime-conditioned. The canonical backtest freezes sets on a single cutoff; walk-forward re-selection (above) confirms the edge holds across 3 annual epochs but is not yet a rich validation. Composite ICs are small (0.02–0.13). Fallback slots bypass the FDR gate. The smoothing speed (λ = 0.5) was not selected out-of-sample. Index legs (^GSPC etc.) are proxies — live implementation needs futures/ETFs with their own costs. rf=0 in Sharpe. 2026 is half a year. Yahoo data quality applies throughout.
 
 ## Where everything lives
 
