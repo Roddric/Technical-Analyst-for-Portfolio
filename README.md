@@ -10,18 +10,25 @@ energy, crypto).
 
 | | Full-period return | Ann. vol | Sharpe (rf=0) | Max DD | Turnover |
 |---|---:|---:|---:|---:|---:|
-| Strategy — frozen OOS (sets ≤ 2023-12-31) | +58.5% | 11.2% | 1.72 | −11.6% | ~1.5–2.4×/yr |
-| Strategy — **walk-forward** (annual re-selection) | **+63.3%** | 10.6% | **1.91** | −10.6% | — |
+| Strategy — frozen OOS (sets ≤ 2023-12-31) | +62.5% | 11.4% | 1.77 | −10.9% | ~1.5–2.4×/yr |
+| Strategy — **walk-forward** (annual re-selection) | **+67.7%** | 10.9% | **1.96** | −10.0% | — |
 | Equal-weight buy & hold (benchmark) | +77.8% | 17.9% | 1.39 | −17.9% | — |
 
 The strategy's edge is **risk-adjusted**, not raw return: it beats buy & hold on Sharpe
-and drawdown while averaging only ~71% invested. Crucially, re-selecting each asset's
+and drawdown while averaging only ~73% invested. Crucially, re-selecting each asset's
 indicator set annually on an expanding window (**walk-forward**, `walkforward.py`) does not
-degrade the frozen-cutoff result — it *improves* on it (+63.3% / 1.91 Sharpe), and narrows
-the in-sample→out-of-sample overfit gap from 28.3pp to 23.5pp. That is evidence the edge is
+degrade the frozen-cutoff result — it *improves* on it (+67.7% / 1.96 Sharpe), and narrows
+the in-sample→out-of-sample overfit gap from 24.2pp to 19.1pp. That is evidence the edge is
 not merely a lucky single cutoff — though the walk-forward has only 3 annual epochs (2026
 partial), so treat it as a directional robustness floor, not a precise forecast. Full
 results, per-asset indicator sets, and caveats: [`results/SUMMARY.md`](results/SUMMARY.md).
+
+> **Reproducibility.** Every figure above is regenerated from the committed code and the
+> committed `price_cache/` by `python portfolio_backtest.py` and `python walkforward.py`.
+> Earlier releases published figures (frozen OOS +58.5% / 1.72, walk-forward +63.3% / 1.91)
+> that the repository could **not** reproduce from its own contents — they were generated
+> from an intermediate working state and never regenerated. Those numbers are corrected here.
+> The strategy, the data and the conclusions are unchanged; only the stale figures moved.
 
 **What's new in v1.1:** the walk-forward harness (**F1**) is the headline strategy, and the
 repo now ships a full [**research log**](docs/RESEARCH-LOG.md) documenting *why* it works —
@@ -103,17 +110,20 @@ why, and target portfolio weights including cash, using the frozen backtested se
 
 Beyond F1, **five** further ideas were designed, implemented under TDD, validated on the same
 walk-forward harness, and **rejected**. Each had a pre-registered adoption bar: *beat F1's
-Sharpe without worsening max drawdown by more than 2pp.* None cleared it. Their comparisons are
-against an F1 recomputed **in the same run** (Sharpe 1.96 — higher than the 1.91 snapshot above
-because more 2026 data had accrued by then).
+Sharpe without worsening max drawdown by more than 2pp.* None cleared it. Each was compared
+against an F1 **recomputed in the same run** (Sharpe **1.9603**), so every comparison is
+apples-to-apples regardless of the stale-figure correction noted above.
 
-| Idea | Axis | Sharpe vs same-run F1 | Why it failed |
+| Idea | Axis | Its Sharpe / maxDD | Why it failed |
 |---|---|---|---|
-| **F2** — pooled ridge → raw 20d return, replaces the composite | cross-sectional | 1.67 vs 1.91 | Raw-return **drift** made every prediction positive → the cash gate never fired → ~100% invested → became buy & hold (maxDD −17.1%) |
-| **F2b** — ridge → cross-sectional z-score, used as tilt *order* | cross-sectional | 1.88 vs 1.96 | Drift fixed, exposure pinned — still no edge. Ridge penalty pegged at grid max, **coefficients ≈ 0** |
-| **F4** — weight ∝ (1/vol) × min(composite, 3) | cross-sectional | 1.83 vs 1.96 | Concentrated the top holding (29.3% vs 19.3%) but the composite's **magnitude is a noisy conviction proxy**; the even rank tilt is near-optimal |
-| **F2b+F4** — weight ∝ (1/vol) × exp(model prediction) | cross-sectional | 1.91 vs 1.96 | Model predictions are ≈ 0 (std 0.04), so weighting **collapses to near-uniform**. Stacking two failures doesn't create edge |
-| **F3** — meta-labeling → confidence modulates *exposure* | timing / exposure | 1.9599 vs 1.9603 | No timing edge either. Penalty pegged at grid max; **largest coefficient 0.003**; exposure multipliers never left neutral |
+| **F2** — pooled ridge → raw 20d return, replaces the composite | cross-sectional | 1.67 / −17.1% | Raw-return **drift** made every prediction positive → the cash gate never fired → ~100% invested (vs F1's ~74%) → became buy & hold |
+| **F2b** — ridge → cross-sectional z-score, used as tilt *order* | cross-sectional | 1.88 / −10.0% | Drift fixed, exposure pinned — still no edge. Ridge penalty pegged at grid max, **coefficients ≈ 0** |
+| **F4** — weight ∝ (1/vol) × min(composite, 3) | cross-sectional | 1.83 / −9.3% | Concentrated the top holding (29.3% vs 19.3%) but the composite's **magnitude is a noisy conviction proxy**; the even rank tilt is near-optimal |
+| **F2b+F4** — weight ∝ (1/vol) × exp(model prediction) | cross-sectional | 1.91 / −11.2% | Model predictions are ≈ 0 (std 0.04), so weighting **collapses to near-uniform**. Stacking two failures doesn't create edge |
+| **F3** — meta-labeling → confidence modulates *exposure* | timing / exposure | 1.9599 / −10.0% | No timing edge either. Penalty pegged at grid max; **largest coefficient 0.003**; exposure multipliers never left neutral |
+
+(F2 predates the figure correction and was recorded against the then-published F1 of 1.91; its
+margin is wide enough that the correction does not affect its verdict.)
 
 **The conclusion.** Five schemes across two orthogonal axes — *which names to hold* and *when to
 be invested* — every one measured coefficients at ≈ 0. On 14 assets, ~3 out-of-sample years and
@@ -131,7 +141,7 @@ engineering lessons (e.g. *make a skill-less model structurally unable to do har
 Composite ICs are small (0.02–0.13). The canonical backtest freezes sets on a single
 cutoff; `walkforward.py` now re-selects annually and confirms the edge holds (see above),
 but with only 3 epochs it is a directional check, not a rich validation. The IS variant is
-an in-sample upper bound (IS−OOS gap ≈ 28pp, IS−walk-forward ≈ 23.5pp are the measured
+an in-sample upper bound (IS−OOS gap ≈ 24.2pp, IS−walk-forward ≈ 19.1pp are the measured
 overfitting costs). The smoothing speed (λ=0.5) was not selected out-of-sample. 2026 is a
 partial year. Sharpe uses rf=0.
 

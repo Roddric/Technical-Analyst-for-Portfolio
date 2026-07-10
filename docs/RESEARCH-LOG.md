@@ -7,12 +7,23 @@ One idea was adopted (**F1**). Five were built, tested, and **rejected** (F2, F2
 F3). The rejected code is not in this repo — the *reasons* are, because they are the more
 valuable output.
 
-> **A note on two different F1 numbers.** The committed snapshot in
-> [`results/portfolio_backtest_walkforward.md`](../results/portfolio_backtest_walkforward.md)
-> records F1 at **+63.3% / Sharpe 1.91 / −10.6% maxDD**. Each rejected experiment was run
-> later, and its comparison baseline is an F1 **recomputed in the same run**, which lands at
-> **+67.7% / Sharpe 1.96 / −10.0%** because more 2026 data had accrued by then. Comparisons
-> below are always *same-run* (apples-to-apples). Never mix the two.
+> **A correction, and why it matters.** Releases before v1.1 published F1 at
+> **+63.3% / Sharpe 1.91 / −10.6%** and a frozen OOS of **+58.5% / 1.72 / −11.6%**. Those
+> figures are **not reproducible from this repository's own contents.** Running
+> `walkforward.py` at the very commit that shipped them — its own code, its own
+> `price_cache/`, its own selection CSVs — produces **+67.7% / 1.9603 / −10.0%**. The reports
+> were generated from an intermediate working state and never regenerated before commit.
+>
+> It was *not* a data change: the price cache has been byte-identical since the baseline
+> commit, and the in-sample and buy & hold rows reproduce to the last digit. Nor was it a code
+> or selection change: the 14 winning sets, every `traded_sign`, and all 3,848 stage-1 IC rows
+> at the `2023-12-31` cutoff are bit-identical, and `build_signals` is unchanged. Only the
+> two variants that flow from that cutoff moved, and they moved together — while the
+> continuity invariant (walk-forward 2024 = frozen-OOS 2024, bit-identical) still holds.
+>
+> The figures throughout this document are the **reproducible** ones. All five rejected
+> experiments were compared against an F1 **recomputed in the same run** (Sharpe 1.9603), so
+> the correction leaves every verdict untouched.
 
 ---
 
@@ -33,8 +44,8 @@ actually current at that moment — so there is no look-ahead.
 
 | Variant | Full return | Ann. vol | Sharpe | Max DD |
 |---|---:|---:|---:|---:|
-| **Walk-forward (annual re-selection)** | **+63.3%** | 10.6% | **1.91** | −10.6% |
-| Frozen OOS (single cutoff) | +58.5% | 11.2% | 1.72 | −11.6% |
+| **Walk-forward (annual re-selection)** | **+67.7%** | 10.9% | **1.96** | −10.0% |
+| Frozen OOS (single cutoff) | +62.5% | 11.4% | 1.77 | −10.9% |
 | In-sample (upper bound, not a forecast) | +86.8% | 11.7% | 2.21 | −10.3% |
 | Equal-weight buy & hold | +77.8% | 17.9% | 1.39 | −17.9% |
 
@@ -55,7 +66,7 @@ Three distinct reasons, and it is worth separating them:
    not fitting noise.
 
 3. **It measurably reduces overfitting.** The in-sample minus out-of-sample gap narrows from
-   **28.3pp** (frozen) to **23.5pp** (walk-forward). That gap *is* the cost of selection
+   **24.2pp** (frozen) to **19.1pp** (walk-forward). That gap *is* the cost of selection
    overfitting; shrinking it means less of the reported performance is illusory.
 
 A continuity check confirms the plumbing: walk-forward 2024 is **bit-identical** to frozen-OOS
@@ -64,10 +75,10 @@ were wrong, that identity would break.
 
 ### Why the strategy beats buy & hold on Sharpe but not on return
 
-The edge is **risk-adjusted, not raw**. The book averages only ~71–76% invested: names with a
+The edge is **risk-adjusted, not raw**. The book averages only ~73% invested: names with a
 non-positive composite signal sit in **cash at 0%**. In a strong bull market that cash drag
-guarantees it trails buy & hold on total return (+63.3% vs +77.8%) — while delivering a far
-better Sharpe (1.91 vs 1.39) and **little more than half the drawdown** (−10.6% vs −17.9%).
+guarantees it trails buy & hold on total return (+67.7% vs +77.8%) — while delivering a far
+better Sharpe (1.96 vs 1.39) and **little more than half the drawdown** (−10.0% vs −17.9%).
 Three mechanics produce that: the cash gate, inverse-volatility weighting, and the pair of
 stabilizers (turnover smoothing at λ=0.5, plus signal-gated exits).
 
@@ -88,13 +99,13 @@ The attempts split across two orthogonal axes:
 - **Cross-sectional** — *which* names to hold, and *how much* of each: F2, F2b, F4, F2b+F4.
 - **Timing / exposure** — *when* to be invested vs in cash: F3.
 
-| # | Idea | Sharpe vs same-run F1 | Max DD | Why it failed |
+| # | Idea | Its Sharpe | Max DD | Why it failed |
 |---|---|---|---|---|
-| F2 | Pooled ridge → raw 20d return, **replaces** the composite | **1.67** vs 1.91 | −17.1% | Target drift switched off the cash gate |
-| F2b | Ridge → cross-sectional z-score, used as tilt **order** | **1.88** vs 1.96 | −10.0% | No cross-sectional edge (coefs ≈ 0) |
-| F4 | Weight ∝ (1/vol) × min(composite, 3) — cardinal conviction | **1.83** vs 1.96 | −9.3% | Signal *magnitude* is a noisy conviction proxy |
-| F2b+F4 | Weight ∝ (1/vol) × exp(model prediction) | **1.91** vs 1.96 | −11.2% | Inherits F2b's zero-signal model |
-| F3 | Meta-labeling → confidence modulates **exposure** | **1.9599** vs 1.9603 | −10.0% | No timing edge either (coefs ≈ 0) |
+| F2 | Pooled ridge → raw 20d return, **replaces** the composite | **1.67** | −17.1% | Target drift switched off the cash gate |
+| F2b | Ridge → cross-sectional z-score, used as tilt **order** | **1.88** | −10.0% | No cross-sectional edge (coefs ≈ 0) |
+| F4 | Weight ∝ (1/vol) × min(composite, 3) — cardinal conviction | **1.83** | −9.3% | Signal *magnitude* is a noisy conviction proxy |
+| F2b+F4 | Weight ∝ (1/vol) × exp(model prediction) | **1.91** | −11.2% | Inherits F2b's zero-signal model |
+| F3 | Meta-labeling → confidence modulates **exposure** | **1.9599** | −10.0% | No timing edge either (coefs ≈ 0) |
 
 ### F2 — pooled ridge, raw-return target *(the instructive failure)*
 
@@ -106,8 +117,8 @@ cash, its **value** decided ranking.
 **Why it failed — a target-design error, not a modelling one.** Raw forward returns have
 **positive drift** (markets rise). So nearly every prediction came out positive, the sign-based
 cash gate **never fired**, and the book sat at **~100% invested vs F1's ~74%**. The strategy
-silently collapsed into buy & hold: more raw return (+93%) but **worse Sharpe (1.67 vs 1.91)
-and a drawdown of −17.1% vs −10.6%**.
+silently collapsed into buy & hold: more raw return (+93%) but **worse Sharpe (1.67, against
+an F1 of ~1.9) and a drawdown of −17.1% vs F1's ~−10%**.
 
 Two lessons, both load-bearing for everything after:
 
@@ -159,7 +170,7 @@ The fusion: F4's structure (uncapped, exposure pinned) but with the conviction w
 `weight ∝ (1/vol) × exp(model_prediction)`. In effect, asking the model not to *rank* names
 (F2b) but to *size* them (F4).
 
-**Why it failed.** **Sharpe 1.91 vs 1.96**, with a *worse* −11.2% drawdown. The diagnostic is
+**Why it failed.** **Sharpe 1.91 vs a same-run F1 of 1.96**, with a *worse* −11.2% drawdown. The diagnostic is
 decisive: the model's predictions on held names have **mean 0.03, standard deviation 0.04** — the
 same ≈ zero-coefficient problem. `exp()` of near-zero values is ≈ 1 for every name, so the
 "conviction" weighting **collapses back to near-uniform**, landing just short of F1. Stacking two
@@ -219,7 +230,7 @@ and held every time.
 
 **F1 is not a disappointing result. It is the frontier of what these features support.** It beats
 the frozen-cutoff baseline on return, Sharpe *and* drawdown; it beats equal-weight buy & hold on
-Sharpe (1.91 vs 1.39) with roughly half the drawdown; and five serious, independently-designed
+Sharpe (1.96 vs 1.39) with roughly half the drawdown; and five serious, independently-designed
 attempts to improve on it all failed.
 
 **If more return is wanted, it will not come from a cleverer model layer on these features.** It

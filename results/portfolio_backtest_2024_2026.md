@@ -8,48 +8,48 @@ Assets with signals: 14/14
 
 |      |   return |   ann_vol |   sharpe |   max_dd |
 |:-----|---------:|----------:|---------:|---------:|
-| 2024 |   0.0693 |    0.0719 |   0.9678 |  -0.0552 |
-| 2025 |   0.3171 |    0.1148 |   2.4768 |  -0.1162 |
-| 2026 |   0.1251 |    0.1608 |   1.5709 |  -0.0751 |
-| FULL |   0.5845 |    0.1116 |   1.7168 |  -0.1162 |
+| 2024 |   0.0852 |    0.0796 |   1.0673 |  -0.062  |
+| 2025 |   0.3223 |    0.1124 |   2.5639 |  -0.1094 |
+| 2026 |   0.1326 |    0.166  |   1.6076 |  -0.0757 |
+| FULL |   0.6253 |    0.1142 |   1.7702 |  -0.1094 |
 
-Annual turnover (sum of rebalance one-way): 2024: 2.43x, 2025: 2.43x, 2026: 1.48x
+Annual turnover (sum of rebalance one-way): 2024: 2.61x, 2025: 2.48x, 2026: 1.51x
 
 ### Monthly holdings — OOS
 
 | date | holdings |
 |---|---|
-| 2024-01-02 | ^TWII 19.2%, ^KS11 14.9%, SI=F 9.5%, CL=F 6.4%, CASH 50.0% |
-| 2024-02-01 | ^KS11 10.7%, ^TWII 9.7%, ^NDX 9.2%, ^GSPC 8.8%, ASHR 6.7%, ^N225 6.6%, CL=F 5.8%, SI=F 4.6%, CASH 37.7% |
-| 2024-03-01 | ^TWII 16.1%, ^N225 12.3%, ^KS11 11.7%, ASHR 8.8%, ^NDX 4.7%, ^GSPC 4.5%, ETH-USD 3.1%, BTC-USD 3.0%, CL=F 2.9%, SI=F 2.2%, CASH 30.7% |
-| 2024-04-01 | ^KS11 14.1%, ^N225 12.6%, ^NDX 11.5%, ASHR 10.2%, ^TWII 8.3%, BTC-USD 3.1%, ^GSPC 2.2%, ETH-USD 1.6%, CL=F 1.5%, SI=F 1.2%, CASH 33.7% |
-| 2024-05-01 | ^NDX 11.6%, ^KS11 11.3%, ^GSPC 10.4%, VEA 8.3%, ^N225 6.1%, ASHR 5.3%, ^TWII 4.3%, SI=F 3.9%, BTC-USD 1.3%, CL=F 0.8%, ETH-USD 0.7%, CASH 35.9% |
-| 2024-06-03 | ASHR 13.0%, VWO 10.0%, GC=F 6.7%, SI=F 6.4%, ^NDX 6.0%, ^KS11 5.4%, ^GSPC 5.3%, CL=F 4.5%, VEA 4.3%, ^N225 3.0%, ETH-USD 2.4%, ^TWII 2.2%, BTC-USD 0.7%, CASH 30.0% |
-| 2024-07-01 | ASHR 13.2%, ^GSPC 9.9%, ^NDX 8.9%, ^TWII 6.4%, VWO 5.1%, GC=F 3.3%, SI=F 3.1%, ^KS11 2.8%, CL=F 2.4%, VEA 2.1%, ^N225 1.5%, ETH-USD 1.1%, CASH 40.3% |
-| 2024-08-01 | ^NDX 11.6%, ^KS11 8.4%, ASHR 6.7%, CL=F 5.6%, ^GSPC 5.0%, ^TWII 3.1%, VWO 2.6%, GC=F 1.7%, SI=F 1.5%, VEA 1.1%, ^N225 0.8%, ETH-USD 0.5%, CASH 51.4% |
-| 2024-09-03 | ^KS11 10.1%, VWO 9.5%, GC=F 7.3%, CL=F 7.0%, ^NDX 5.9%, ASHR 3.3%, ^GSPC 2.6%, ^TWII 1.5%, SI=F 0.8%, VEA 0.6%, CASH 51.4% |
-| 2024-10-01 | VWO 13.2%, ^KS11 11.1%, CL=F 9.3%, VEA 8.0%, GC=F 3.8%, BTC-USD 3.1%, ^NDX 3.0%, ASHR 2.0%, ^GSPC 1.3%, ^TWII 0.8%, CASH 44.5% |
-| 2024-11-01 | VEA 13.2%, ^FTSE 11.5%, VWO 11.1%, ^GSPC 11.0%, ^NDX 9.8%, CL=F 7.4%, ^KS11 5.5%, ASHR 2.3%, GC=F 2.0%, BTC-USD 1.7%, SI=F 1.7%, CASH 22.7% |
-| 2024-12-02 | VEA 18.4%, CL=F 9.2%, SI=F 6.5%, BTC-USD 5.8%, ^FTSE 5.8%, ^GSPC 5.8%, VWO 5.4%, ^NDX 5.1%, ETH-USD 3.4%, ^KS11 2.6%, ASHR 1.2%, GC=F 0.9%, CASH 30.0% |
-| 2025-01-02 | VEA 21.2%, ^FTSE 13.6%, ^GSPC 11.4%, ^NDX 9.6%, SI=F 8.1%, CL=F 6.9%, ^N225 3.0%, BTC-USD 2.8%, VWO 2.7%, ASHR 2.1%, ETH-USD 1.6%, ^KS11 1.3%, CASH 15.7% |
-| 2025-02-03 | VEA 20.6%, ^GSPC 13.4%, CL=F 7.0%, ^FTSE 7.0%, VWO 6.9%, ASHR 5.3%, ^NDX 4.8%, SI=F 4.3%, BTC-USD 1.5%, ^N225 1.5%, ETH-USD 0.8%, ^KS11 0.7%, CASH 26.3% |
-| 2025-03-03 | VWO 13.5%, ^NDX 11.3%, ^GSPC 11.0%, VEA 10.6%, ASHR 9.1%, GC=F 7.4%, CL=F 7.1%, SI=F 6.8%, ^N225 5.3%, ^FTSE 3.6%, BTC-USD 0.6%, CASH 13.8% |
-| 2025-04-01 | VEA 16.1%, VWO 12.9%, ^FTSE 12.9%, ^NDX 11.3%, ASHR 11.0%, ^GSPC 10.0%, GC=F 4.1%, ^KS11 3.7%, SI=F 3.7%, CL=F 3.6%, ^N225 2.6%, ETH-USD 0.8%, CASH 7.2% |
-| 2025-05-01 | ^FTSE 18.7%, VEA 14.5%, CL=F 10.3%, SI=F 10.0%, VWO 6.5%, ^KS11 6.0%, ^NDX 5.8%, ASHR 5.4%, ^GSPC 5.0%, ^TWII 4.9%, ETH-USD 3.2%, BTC-USD 2.7%, GC=F 2.2%, ^N225 1.3%, CASH 3.6% |
-| 2025-06-02 | CL=F 11.9%, GC=F 11.7%, ASHR 11.3%, ^FTSE 9.2%, VWO 8.7%, ^KS11 8.0%, ^TWII 7.6%, VEA 7.2%, SI=F 4.8%, ETH-USD 4.1%, ^NDX 3.0%, ^GSPC 2.5%, BTC-USD 1.4%, ^N225 0.6%, CASH 8.0% |
-| 2025-07-01 | ^KS11 14.3%, GC=F 12.1%, ^FTSE 11.0%, CL=F 10.9%, ^TWII 7.7%, ^N225 6.1%, ASHR 5.7%, VWO 4.4%, VEA 3.6%, SI=F 2.5%, ETH-USD 1.9%, ^NDX 1.5%, ^GSPC 1.3%, BTC-USD 0.7%, CASH 16.3% |
-| 2025-08-01 | GC=F 13.9%, ASHR 12.4%, ^N225 11.0%, ^KS11 11.0%, ^TWII 9.2%, ^NDX 8.0%, VEA 7.7%, CL=F 5.6%, ^FTSE 5.5%, ETH-USD 3.6%, VWO 2.1%, SI=F 1.2%, ^GSPC 0.6%, CASH 8.2% |
-| 2025-09-02 | ^N225 13.0%, ^NDX 12.5%, GC=F 7.1%, ASHR 6.7%, ^KS11 5.2%, CL=F 5.1%, ^TWII 4.6%, VEA 3.9%, ^FTSE 2.7%, ETH-USD 2.0%, VWO 1.1%, SI=F 0.7%, CASH 35.5% |
-| 2025-10-01 | ^N225 14.8%, ^KS11 9.5%, ^NDX 6.4%, CL=F 6.2%, GC=F 3.8%, ASHR 3.4%, ^TWII 2.4%, VEA 1.9%, ^FTSE 1.3%, ETH-USD 0.9%, VWO 0.5%, CASH 48.8% |
-| 2025-11-03 | ^KS11 16.2%, ^N225 14.7%, GC=F 9.2%, ASHR 8.6%, ^TWII 7.1%, CL=F 5.9%, SI=F 3.2%, ^NDX 3.2%, VEA 0.9%, ^FTSE 0.7%, CASH 30.2% |
-| 2025-12-01 | ^N225 13.5%, CL=F 9.0%, ^KS11 7.8%, GC=F 4.9%, ASHR 4.3%, ^TWII 3.5%, SI=F 1.9%, ^NDX 1.6%, CASH 53.5% |
-| 2026-01-02 | ^N225 11.2%, ASHR 10.8%, ^NDX 10.4%, GC=F 8.8%, ^TWII 8.7%, CL=F 4.4%, ^KS11 4.1%, SI=F 2.7%, CASH 38.9% |
-| 2026-02-02 | ASHR 14.6%, ^NDX 13.4%, ^KS11 9.2%, VWO 8.7%, GC=F 7.4%, ^N225 5.7%, ^TWII 4.6%, SI=F 3.1%, CL=F 2.4%, CASH 31.1% |
-| 2026-03-02 | ^TWII 13.1%, ^KS11 12.0%, VWO 10.9%, ^N225 10.3%, ^GSPC 9.5%, ASHR 7.1%, ^NDX 6.3%, GC=F 3.9%, SI=F 3.1%, ETH-USD 1.6%, CL=F 1.2%, CASH 21.1% |
-| 2026-04-01 | ^NDX 17.2%, ^FTSE 12.9%, VWO 9.7%, VEA 7.8%, GC=F 6.9%, ^TWII 6.3%, ^KS11 5.2%, ^GSPC 4.8%, ^N225 4.8%, ETH-USD 3.8%, ASHR 3.7%, CL=F 2.7%, SI=F 2.6%, CASH 11.4% |
-| 2026-05-01 | VWO 14.5%, ^FTSE 13.4%, GC=F 10.4%, ^TWII 9.8%, ^NDX 9.1%, ^KS11 8.6%, ^N225 7.2%, ETH-USD 6.6%, BTC-USD 4.5%, VEA 3.9%, ^GSPC 2.4%, ASHR 1.8%, CL=F 1.3%, SI=F 1.2%, CASH 5.2% |
-| 2026-06-01 | GC=F 16.1%, ^TWII 13.5%, ^KS11 10.0%, ^N225 9.7%, VWO 7.0%, ^FTSE 6.4%, ETH-USD 6.2%, ^NDX 4.8%, SI=F 4.7%, BTC-USD 2.1%, VEA 1.9%, ^GSPC 1.2%, ASHR 0.9%, CL=F 0.5%, CASH 15.0% |
-| 2026-07-01 | GC=F 14.7%, VWO 10.3%, ^N225 10.2%, ^TWII 7.2%, ^KS11 5.2%, ^FTSE 3.4%, ETH-USD 2.5%, ^NDX 2.5%, SI=F 1.9%, VEA 1.0%, BTC-USD 0.9%, ^GSPC 0.6%, CASH 39.7% |
+| 2024-01-02 | ^TWII 16.7%, GC=F 15.2%, ^KS11 14.9%, SI=F 8.5%, CL=F 7.1%, CASH 37.5% |
+| 2024-02-01 | ^NDX 8.5%, ^TWII 8.4%, ^GSPC 8.2%, GC=F 7.6%, ^KS11 7.1%, ASHR 6.2%, ^N225 6.1%, CL=F 6.1%, SI=F 4.1%, CASH 37.7% |
+| 2024-03-01 | ^TWII 15.5%, ^N225 12.1%, ^KS11 9.8%, ASHR 8.5%, ^NDX 4.4%, ^GSPC 4.2%, GC=F 3.7%, ETH-USD 3.1%, CL=F 3.0%, BTC-USD 3.0%, SI=F 2.0%, CASH 30.8% |
+| 2024-04-01 | ^N225 13.4%, ^KS11 11.5%, ^NDX 11.4%, ASHR 10.8%, ^TWII 8.0%, BTC-USD 3.1%, ^GSPC 2.1%, GC=F 1.9%, ETH-USD 1.6%, CL=F 1.6%, SI=F 1.0%, CASH 33.7% |
+| 2024-05-01 | ^NDX 11.3%, ^GSPC 10.0%, VEA 8.0%, ^N225 6.5%, GC=F 6.2%, ^KS11 5.7%, ASHR 5.6%, ^TWII 4.1%, SI=F 3.8%, BTC-USD 1.3%, CL=F 0.8%, ETH-USD 0.7%, CASH 35.9% |
+| 2024-06-03 | ASHR 12.5%, GC=F 12.3%, VWO 9.4%, SI=F 6.1%, ^NDX 5.9%, ^GSPC 5.1%, CL=F 4.2%, VEA 4.1%, ^N225 3.2%, ^KS11 2.7%, ^TWII 2.1%, ETH-USD 1.7%, BTC-USD 0.7%, CASH 30.0% |
+| 2024-07-01 | ASHR 13.6%, GC=F 11.1%, ^GSPC 9.5%, ^NDX 9.3%, ^TWII 6.8%, VWO 4.7%, SI=F 2.9%, CL=F 2.2%, VEA 2.0%, ^N225 1.6%, ^KS11 1.4%, ETH-USD 0.8%, CASH 34.0% |
+| 2024-08-01 | ^NDX 12.9%, VWO 9.5%, ^KS11 8.7%, ASHR 6.9%, CL=F 6.2%, GC=F 5.7%, ^GSPC 4.8%, SI=F 4.1%, ^TWII 3.3%, VEA 1.0%, ^N225 0.8%, CASH 36.1% |
+| 2024-09-03 | VWO 14.3%, ^KS11 11.1%, GC=F 9.3%, CL=F 8.0%, ^NDX 6.5%, SI=F 5.4%, ASHR 3.4%, ^GSPC 2.4%, ^TWII 1.6%, VEA 0.5%, CASH 37.2% |
+| 2024-10-01 | VWO 17.6%, ^KS11 11.3%, CL=F 10.3%, VEA 7.4%, SI=F 7.1%, GC=F 4.8%, BTC-USD 3.4%, ^NDX 3.3%, ASHR 2.0%, ^GSPC 1.2%, ^TWII 0.8%, CASH 30.7% |
+| 2024-11-01 | VEA 12.4%, ^FTSE 10.9%, ^GSPC 10.4%, ^NDX 9.5%, VWO 8.6%, CL=F 7.8%, SI=F 6.2%, ^KS11 5.6%, GC=F 2.5%, ASHR 2.3%, BTC-USD 1.9%, CASH 22.0% |
+| 2024-12-02 | VEA 18.7%, CL=F 8.9%, BTC-USD 5.5%, ^FTSE 5.5%, ^GSPC 5.5%, ^NDX 4.9%, VWO 4.1%, ETH-USD 3.1%, SI=F 2.9%, ^KS11 2.7%, GC=F 1.2%, ASHR 1.1%, CASH 35.9% |
+| 2025-01-02 | VEA 21.2%, ^FTSE 13.4%, ^GSPC 11.2%, ^NDX 9.5%, SI=F 6.3%, CL=F 6.3%, GC=F 4.4%, BTC-USD 2.7%, VWO 2.1%, ASHR 2.1%, ETH-USD 1.5%, ^KS11 1.3%, CASH 18.2% |
+| 2025-02-03 | VEA 20.6%, ^GSPC 13.3%, ^FTSE 6.8%, CL=F 6.7%, VWO 6.6%, ASHR 5.3%, ^NDX 4.7%, SI=F 3.4%, GC=F 2.3%, BTC-USD 1.4%, ETH-USD 0.7%, ^KS11 0.7%, CASH 27.5% |
+| 2025-03-03 | VWO 12.0%, GC=F 11.7%, ^NDX 11.1%, ^GSPC 10.8%, VEA 10.6%, ASHR 8.3%, CL=F 6.8%, SI=F 5.6%, ^N225 4.6%, ^FTSE 3.5%, BTC-USD 0.6%, CASH 14.4% |
+| 2025-04-01 | VEA 16.2%, ^FTSE 11.5%, ^NDX 11.3%, ASHR 10.7%, VWO 10.3%, ^GSPC 10.0%, GC=F 6.4%, ^KS11 6.3%, CL=F 3.5%, SI=F 3.1%, ^N225 2.2%, ETH-USD 0.8%, CASH 7.5% |
+| 2025-05-01 | ^FTSE 18.1%, VEA 14.6%, CL=F 10.2%, SI=F 9.7%, ASHR 9.2%, ^NDX 5.7%, VWO 5.2%, ^GSPC 5.0%, ^TWII 4.9%, GC=F 3.4%, ^KS11 3.3%, ETH-USD 3.2%, BTC-USD 2.7%, ^N225 1.1%, CASH 3.7% |
+| 2025-06-02 | ASHR 12.9%, CL=F 12.4%, GC=F 11.0%, ^FTSE 8.9%, VWO 8.0%, ^TWII 7.4%, VEA 7.3%, SI=F 4.7%, ETH-USD 4.1%, ^NDX 3.0%, ^GSPC 2.5%, ^KS11 1.6%, BTC-USD 1.4%, ^N225 0.6%, CASH 14.3% |
+| 2025-07-01 | GC=F 11.8%, CL=F 11.2%, ^KS11 10.9%, ^FTSE 10.9%, ^TWII 7.7%, ASHR 6.5%, ^N225 6.0%, VWO 4.1%, VEA 3.6%, SI=F 2.5%, ETH-USD 1.9%, ^NDX 1.5%, ^GSPC 1.3%, BTC-USD 0.7%, CASH 19.4% |
+| 2025-08-01 | GC=F 13.3%, ASHR 13.2%, ^N225 11.3%, ^TWII 9.4%, ^NDX 8.3%, VEA 7.9%, CL=F 5.8%, ^KS11 5.6%, ^FTSE 5.5%, ETH-USD 3.9%, SI=F 3.6%, VWO 2.0%, ^GSPC 0.6%, CASH 9.7% |
+| 2025-09-02 | ^N225 13.2%, ^NDX 12.7%, ASHR 7.1%, GC=F 6.7%, CL=F 5.1%, ^TWII 4.6%, VEA 4.0%, ^FTSE 2.6%, ^KS11 2.6%, ETH-USD 2.2%, SI=F 1.9%, VWO 1.0%, CASH 36.2% |
+| 2025-10-01 | ^N225 14.9%, ^KS11 8.2%, ^NDX 6.5%, CL=F 6.2%, GC=F 3.6%, ASHR 3.6%, ^TWII 2.4%, VEA 2.0%, ^FTSE 1.3%, SI=F 1.1%, ETH-USD 1.0%, VWO 0.5%, CASH 48.8% |
+| 2025-11-03 | ^KS11 15.6%, ^N225 14.0%, GC=F 9.2%, ASHR 8.7%, ^TWII 7.2%, CL=F 6.0%, SI=F 4.3%, ^NDX 3.2%, VEA 1.0%, ^FTSE 0.6%, CASH 30.3% |
+| 2025-12-01 | ^N225 13.1%, CL=F 9.0%, ^KS11 7.5%, GC=F 4.9%, ASHR 4.3%, ^TWII 3.5%, SI=F 2.5%, ^NDX 1.6%, CASH 53.5% |
+| 2026-01-02 | ^NDX 11.0%, ^N225 10.5%, ASHR 10.3%, GC=F 8.4%, ^TWII 8.1%, SI=F 4.4%, CL=F 4.4%, ^KS11 4.0%, CASH 38.9% |
+| 2026-02-02 | ASHR 14.4%, ^NDX 13.8%, VWO 8.9%, ^KS11 8.5%, GC=F 7.2%, ^N225 5.3%, ^TWII 4.3%, SI=F 4.2%, CL=F 2.4%, CASH 31.1% |
+| 2026-03-02 | ^TWII 12.9%, ^KS11 11.6%, VWO 11.0%, ^N225 10.2%, ^GSPC 9.5%, ASHR 7.0%, ^NDX 6.4%, GC=F 3.8%, SI=F 3.7%, ETH-USD 1.6%, CL=F 1.2%, CASH 21.1% |
+| 2026-04-01 | ^NDX 17.3%, ^FTSE 14.5%, VWO 9.7%, VEA 6.6%, GC=F 6.3%, ^TWII 6.2%, ^KS11 5.1%, ^GSPC 4.8%, ^N225 4.8%, ETH-USD 3.8%, ASHR 3.6%, SI=F 3.1%, CL=F 2.7%, CASH 11.4% |
+| 2026-05-01 | VWO 15.9%, ^FTSE 14.1%, ^TWII 10.9%, ^NDX 9.2%, ^KS11 8.5%, GC=F 7.5%, ^N225 7.1%, ETH-USD 6.5%, BTC-USD 5.1%, VEA 3.3%, ^GSPC 2.4%, ASHR 1.8%, SI=F 1.4%, CL=F 1.3%, CASH 5.2% |
+| 2026-06-01 | ^TWII 16.2%, ^N225 10.7%, GC=F 10.7%, ^KS11 10.0%, VWO 7.7%, ^FTSE 6.7%, ETH-USD 6.3%, SI=F 5.5%, ^NDX 4.8%, BTC-USD 2.3%, VEA 1.6%, ^GSPC 1.2%, ASHR 0.9%, CL=F 0.5%, CASH 15.0% |
+| 2026-07-01 | GC=F 14.9%, ^N225 12.6%, VWO 12.0%, ^TWII 8.6%, ^KS11 7.8%, SI=F 6.1%, ^FTSE 3.5%, ETH-USD 2.5%, ^NDX 2.5%, BTC-USD 1.0%, VEA 0.8%, ^GSPC 0.6%, CASH 27.2% |
 
 ## IS (selection window: FULL)
 

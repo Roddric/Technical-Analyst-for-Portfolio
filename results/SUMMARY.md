@@ -48,20 +48,22 @@ At each month's first trading day (deciding on the prior day's data):
 
 | Year | Return | Ann. vol | Sharpe (rf=0) | Max DD | Avg invested |
 |---|---:|---:|---:|---:|---:|
-| 2024 | +6.9% | 7.2% | 0.97 | −5.5% | 62% |
-| 2025 | +31.7% | 11.5% | 2.48 | −11.6% | 78% |
-| 2026 YTD | +12.5% | 16.1% | 1.57 | −7.5% | 77% |
-| **Full** | **+58.5%** | **11.2%** | **1.72** | **−11.6%** | 71% |
+| 2024 | +8.5% | 8.0% | 1.07 | −6.2% | 66.5% |
+| 2025 | +32.2% | 11.2% | 2.56 | −10.9% | 76.4% |
+| 2026 YTD | +13.3% | 16.6% | 1.61 | −7.6% | 78.6% |
+| **Full** | **+62.5%** | **11.4%** | **1.77** | **−10.9%** | 73.1% |
 
 **IS upper bound:** +86.8% full-period, Sharpe 2.21, maxDD −10.3%. **Equal-weight buy & hold benchmark:** +77.8%, vol 17.9%, Sharpe 1.39, maxDD −17.9%.
 
+> **Reproducibility note.** These figures are regenerated from the committed code and committed `price_cache/`. Releases before v1.1 published a frozen-OOS of +58.5% / Sharpe 1.72 and a walk-forward of +63.3% / 1.91 that the repository could **not** reproduce from its own contents (generated from an intermediate working state, never regenerated). Both `portfolio_backtest.py` and `walkforward.py` — which share no walk-forward code — now agree on the numbers above. The strategy, data and conclusions are unchanged.
+
 ## Interpretation
 
-- **The strategy's edge is risk-adjusted, not raw return**: it beats the benchmark on Sharpe (1.72 vs 1.39) and drawdown (−11.6% vs −17.9%) but trails on total return, because it averaged only ~71% invested in a strong bull period.
-- **2024 lagged** (+6.9% vs +23.8%) from a double miss: 62% average investment (cash drag) *and* an invested sleeve tilted to Asia/commodities while US mega-caps led.
-- **2025 is the signal working**: 78% invested, beating the benchmark outright (+31.7% vs +28.9%).
-- **2026 YTD beats the benchmark** (+12.5% vs +11.4%) with a shallower drawdown — fading exits kept more of the rebound around the March and June sell-offs.
-- **IS−OOS gap ≈ 28pp** over the full period: the measured cost of selection overfitting. Expect live results closer to OOS than IS.
+- **The strategy's edge is risk-adjusted, not raw return**: it beats the benchmark on Sharpe (1.77 vs 1.39) and drawdown (−10.9% vs −17.9%) but trails on total return, because it averaged only ~73% invested in a strong bull period.
+- **2024 lagged** (+8.5% vs +23.8%) from a double miss: 66.5% average investment (cash drag) *and* an invested sleeve tilted to Asia/commodities while US mega-caps led.
+- **2025 is the signal working**: 76.4% invested, beating the benchmark outright (+32.2% vs +28.9%).
+- **2026 YTD beats the benchmark** (+13.3% vs +11.4%) with a shallower drawdown — fading exits kept more of the rebound around the March and June sell-offs.
+- **IS−OOS gap ≈ 24pp** over the full period: the measured cost of selection overfitting. Expect live results closer to OOS than IS.
 
 ## Walk-forward re-selection (v2 · F1)
 
@@ -69,12 +71,12 @@ The numbers above freeze each asset's set on a **single** cutoff (≤ 2023-12-31
 
 | Variant | Full return | Ann. vol | Sharpe | Max DD |
 |---|---:|---:|---:|---:|
-| **Walk-forward (re-selected)** | **+63.3%** | 10.6% | **1.91** | −10.6% |
-| Frozen OOS (single cutoff) | +58.5% | 11.2% | 1.72 | −11.6% |
+| **Walk-forward (re-selected)** | **+67.7%** | 10.9% | **1.96** | −10.0% |
+| Frozen OOS (single cutoff) | +62.5% | 11.4% | 1.77 | −10.9% |
 | In-sample (upper bound) | +86.8% | 11.7% | 2.21 | −10.3% |
 
-- **Continuity check passes:** walk-forward 2024 = +6.9%, bit-identical to frozen OOS 2024 (2024's rebalances are all governed by the 2023-12-31 epoch) — confirms the date-stitching.
-- **Re-selection improves on the frozen cutoff** on return, Sharpe *and* drawdown, and narrows the overfit gap: IS − walk-forward = **23.5pp** vs the frozen IS − OOS = **28.3pp**.
+- **Continuity check passes:** walk-forward 2024 = +8.5%, bit-identical to frozen OOS 2024 (2024's rebalances are all governed by the 2023-12-31 epoch) — confirms the date-stitching.
+- **Re-selection improves on the frozen cutoff** on return, Sharpe *and* drawdown, and narrows the overfit gap: IS − walk-forward = **19.1pp** vs the frozen IS − OOS = **24.2pp**.
 - **Set stability** across cutoffs is moderate: `^N225`/`^TWII` unchanged in all 4 slots, the trend slot is `dpo`-dominant, `VWO` churns most (2.5/4 per step). No sign of noise-fitting.
 - **Honest limit:** only 3 annual epochs (2026 partial) — a directional robustness floor, not a statistically rich validation. Full report: `results/portfolio_backtest_walkforward.md`.
 

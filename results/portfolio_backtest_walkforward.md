@@ -8,8 +8,8 @@
 
 |                |   return |   ann_vol |   sharpe |   max_dd |
 |:---------------|---------:|----------:|---------:|---------:|
-| Walk-forward   |   0.6328 |    0.1064 |   1.9082 |  -0.1059 |
-| Frozen OOS     |   0.5845 |    0.1116 |   1.7168 |  -0.1162 |
+| Walk-forward   |   0.677  |    0.1093 |   1.9603 |  -0.1001 |
+| Frozen OOS     |   0.6253 |    0.1142 |   1.7702 |  -0.1094 |
 | In-sample (IS) |   0.8677 |    0.1169 |   2.2103 |  -0.1029 |
 | EW buy&hold    |   0.7779 |    0.1785 |   1.3879 |  -0.1785 |
 
@@ -17,15 +17,15 @@
 
 |      |   return |   ann_vol |   sharpe |   max_dd |
 |:-----|---------:|----------:|---------:|---------:|
-| 2024 |   0.0693 |    0.0719 |   0.9678 |  -0.0552 |
-| 2025 |   0.3304 |    0.1108 |   2.6545 |  -0.1059 |
-| 2026 |   0.1478 |    0.1482 |   1.9659 |  -0.0712 |
-| FULL |   0.6328 |    0.1064 |   1.9082 |  -0.1059 |
+| 2024 |   0.0852 |    0.0796 |   1.0673 |  -0.062  |
+| 2025 |   0.3452 |    0.1062 |   2.8697 |  -0.1001 |
+| 2026 |   0.1487 |    0.1571 |   1.873  |  -0.0727 |
+| FULL |   0.677  |    0.1093 |   1.9603 |  -0.1001 |
 
 ## Overfitting gap (the robustness headline)
 
-- Frozen IS - OOS gap: **+28.3 pp** (the single-cutoff overfit cost quoted in SUMMARY.md).
-- IS - **walk-forward** gap: **+23.5 pp**.
+- Frozen IS - OOS gap: **+24.2 pp** (the single-cutoff overfit cost quoted in SUMMARY.md).
+- IS - **walk-forward** gap: **+19.1 pp**.
 - If the walk-forward gap is materially narrower than the frozen gap, re-selection recovered part of the overfit; if the walk-forward FULL return collapses toward zero, the edge was largely the lucky cutoff.
 
 ## Set stability across cutoffs
