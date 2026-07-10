@@ -1,4 +1,4 @@
-# ta-flat-backtest
+# Technical Analyst for Portfolio Construction — v1.1
 
 Quant-research codebase that finds an **optimal set of technical indicators per asset**
 (one each from the volume / trend / momentum / volatility families in `pandas_ta`),
@@ -22,6 +22,12 @@ the in-sample→out-of-sample overfit gap from 28.3pp to 23.5pp. That is evidenc
 not merely a lucky single cutoff — though the walk-forward has only 3 annual epochs (2026
 partial), so treat it as a directional robustness floor, not a precise forecast. Full
 results, per-asset indicator sets, and caveats: [`results/SUMMARY.md`](results/SUMMARY.md).
+
+**What's new in v1.1:** the walk-forward harness (**F1**) is the headline strategy, and the
+repo now ships a full [**research log**](docs/RESEARCH-LOG.md) documenting *why* it works —
+plus five subsequent attempts to beat it (learned cross-sectional signals, conviction
+weighting, and meta-labeled exposure sizing) that were all **built, tested, and rejected**.
+Their code is not here; their reasons are. See [Research log](#research-log--what-didnt-work).
 
 ## How it works
 
@@ -54,7 +60,7 @@ Developed on Python 3.14 / pandas 3.x (3.12+ should work).
 
 ```bash
 pip install -r requirements.txt
-pytest tests -q                              # 36 tests
+pytest tests -q                              # 41 tests
 
 python pandasta_set_search.py                # rebuild indicator-set selection
 python portfolio_backtest.py                 # backtest (OOS + IS + benchmark)
@@ -81,6 +87,7 @@ why, and target portfolio weights including cash, using the frozen backtested se
 | `price_cache/`, `price_cache.py` | Cached daily OHLCV CSVs (Yahoo Finance, through 2026-07) |
 | `results/` | All outputs — start with `results/SUMMARY.md` |
 | `tests/` | Pytest suite: causality, FDR pooling, cash accounting, smoothing math |
+| `docs/RESEARCH-LOG.md` | Why F1 works, and why five attempts to beat it failed |
 | `docs/superpowers/` | Design spec and implementation plan |
 
 ## Data notes
@@ -91,6 +98,33 @@ why, and target portfolio weights including cash, using the frozen backtested se
   or `python price_cache.py`.
 - CSI 300 is proxied by the ASHR ETF; index legs (^GSPC etc.) are non-tradable
   proxies — live implementation needs futures/ETFs with their own costs.
+
+## Research log — what didn't work
+
+Beyond F1, **five** further ideas were designed, implemented under TDD, validated on the same
+walk-forward harness, and **rejected**. Each had a pre-registered adoption bar: *beat F1's
+Sharpe without worsening max drawdown by more than 2pp.* None cleared it. Their comparisons are
+against an F1 recomputed **in the same run** (Sharpe 1.96 — higher than the 1.91 snapshot above
+because more 2026 data had accrued by then).
+
+| Idea | Axis | Sharpe vs same-run F1 | Why it failed |
+|---|---|---|---|
+| **F2** — pooled ridge → raw 20d return, replaces the composite | cross-sectional | 1.67 vs 1.91 | Raw-return **drift** made every prediction positive → the cash gate never fired → ~100% invested → became buy & hold (maxDD −17.1%) |
+| **F2b** — ridge → cross-sectional z-score, used as tilt *order* | cross-sectional | 1.88 vs 1.96 | Drift fixed, exposure pinned — still no edge. Ridge penalty pegged at grid max, **coefficients ≈ 0** |
+| **F4** — weight ∝ (1/vol) × min(composite, 3) | cross-sectional | 1.83 vs 1.96 | Concentrated the top holding (29.3% vs 19.3%) but the composite's **magnitude is a noisy conviction proxy**; the even rank tilt is near-optimal |
+| **F2b+F4** — weight ∝ (1/vol) × exp(model prediction) | cross-sectional | 1.91 vs 1.96 | Model predictions are ≈ 0 (std 0.04), so weighting **collapses to near-uniform**. Stacking two failures doesn't create edge |
+| **F3** — meta-labeling → confidence modulates *exposure* | timing / exposure | 1.9599 vs 1.9603 | No timing edge either. Penalty pegged at grid max; **largest coefficient 0.003**; exposure multipliers never left neutral |
+
+**The conclusion.** Five schemes across two orthogonal axes — *which names to hold* and *when to
+be invested* — every one measured coefficients at ≈ 0. On 14 assets, ~3 out-of-sample years and
+~95 monthly training observations with composite ICs of 0.02–0.13, **there is no exploitable
+signal beyond what the equal-weight composite already extracts.** The binding constraint is
+sample size and overfitting, not model capacity. F1 appears to be at the frontier of what these
+features support; more return would have to come from better **inputs**, not a cleverer layer.
+
+The full write-up — including why F1 improves on the frozen cutoff, and the transferable
+engineering lessons (e.g. *make a skill-less model structurally unable to do harm*) — is in
+[**`docs/RESEARCH-LOG.md`**](docs/RESEARCH-LOG.md).
 
 ## Caveats — read before trusting any number
 

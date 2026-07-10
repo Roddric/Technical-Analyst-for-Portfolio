@@ -92,4 +92,5 @@ Flat-history selection, not regime-conditioned. The canonical backtest freezes s
 | Equity curves / per-rebalance weights | `results/portfolio_equity_curves.csv`, `portfolio_weights_OOS.csv`, `portfolio_weights_IS.csv` |
 | Interactive charts (IS vs OOS equity, composition, weight heatmap) | https://claude.ai/code/artifact/c0a925a7-b5c0-48d0-ad75-bb8269fc01f5 |
 | Agent entry point (signals, holds, weights) | `final-backtest/ta_advisor.py` |
+| **Research log** — why F1 works, why 5 attempts to beat it failed | `docs/RESEARCH-LOG.md` |
 | Spec / plan | `docs/superpowers/specs/`, `docs/superpowers/plans/` |
